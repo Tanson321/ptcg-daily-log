@@ -1,13 +1,12 @@
 import "dotenv/config";
 import fs from "node:fs/promises";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const ai = new GoogleGenAI({
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 const input = await fs.readFile("logs/today.md", "utf-8");
-
 const today = new Date().toISOString().slice(0, 10);
 
 const prompt = `
@@ -34,12 +33,12 @@ Discordログ:
 ${input}
 `;
 
-const response = await openai.responses.create({
-  model: "gpt-4.1-mini",
-  input: prompt,
+const response = await ai.models.generateContent({
+  model: "gemini-2.5-flash",
+  contents: prompt,
 });
 
-const article = response.output_text;
+const article = response.text;
 
 await fs.mkdir("posts", { recursive: true });
 await fs.writeFile(`posts/${today}.md`, article);
