@@ -1,10 +1,14 @@
 {
   "name": "ptcg-daily-log",
   "version": "1.0.0",
+  "type": "module",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "channels": "node scripts/list-channels.js",
+    "fetch": "node scripts/fetch-today.js",
+    "generate": "node scripts/generate-post.js"
   },
   "keywords": [],
   "author": "",
