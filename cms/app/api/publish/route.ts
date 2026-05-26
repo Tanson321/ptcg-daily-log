@@ -34,9 +34,9 @@ export async function POST(request: NextRequest) {
   await fs.mkdir(PUBLISHED_DIR, { recursive: true });
   await fs.writeFile(destPath, content, "utf-8");
 
+  await run("git", ["pull", "--rebase", "--autostash"]);
   await run("npm", ["run", "site"]);
-  await run("git", ["pull", "--rebase"]);
-  await run("git", ["add", "published", "docs"]);
+  await run("git", ["add", "posts", "published", "docs"]);
   await run("git", ["commit", "-m", `publish ${slug}`]).catch((error) => {
     const stderr = String(error?.stderr ?? "");
     const stdout = String(error?.stdout ?? "");
