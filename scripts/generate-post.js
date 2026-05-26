@@ -1,35 +1,60 @@
 import "dotenv/config";
 import fs from "node:fs/promises";
+import path from "node:path";
 import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-const input = await fs.readFile("logs/today.md", "utf-8");
-const today = new Date().toISOString().slice(0, 10);
+async function getLatestLogFile() {
+  const files = await fs.readdir("logs");
+
+  const markdownFiles = files.filter((file) => file.endsWith(".md"));
+
+  if (markdownFiles.length === 0) {
+    throw new Error("logs に markdown ファイルがありません");
+  }
+
+  const filesWithStats = await Promise.all(
+    markdownFiles.map(async (file) => {
+      const fullPath = path.join("logs", file);
+      const stat = await fs.stat(fullPath);
+
+      return {
+        file,
+        fullPath,
+        mtime: stat.mtime,
+      };
+    }),
+  );
+
+  filesWithStats.sort((a, b) => b.mtime - a.mtime);
+
+  return filesWithStats[0];
+}
+
+const latestLog = await getLatestLogFile();
+
+console.log(`using log: ${latestLog.file}`);
+
+const input = await fs.readFile(latestLog.fullPath, "utf-8");
+
+const persona = await fs.readFile("prompts/luka-persona.md", "utf-8");
+
+const style = await fs.readFile("prompts/article-style.md", "utf-8");
+
+const structure = await fs.readFile("prompts/article-structure.md", "utf-8");
 
 const prompt = `
-あなたはポケモンカードの考察ログを整理する編集者です。
-以下のDiscordログをもとに、研究アーカイブとして読み返しやすいMarkdown記事を作成してください。
+${persona}
 
-方針:
-- 雑談は省く
-- 有用な考察・仮説・検証事項を抽出する
-- 断定しすぎず、ログから言える範囲で書く
-- ポケカプレイヤーが後から読んで役立つ形にする
-- 不明点や未検証事項は「今後の検証」に分ける
+${style}
 
-記事構成:
-# タイトル
-## 今日の要約
-## 重要な考察
-## 新しい仮説
-## デッキ・カードごとのメモ
-## 今後の検証
-## 元ログからの抜粋
+${structure}
 
 Discordログ:
+
 ${input}
 `;
 
@@ -41,6 +66,10 @@ const response = await ai.models.generateContent({
 const article = response.text;
 
 await fs.mkdir("posts", { recursive: true });
-await fs.writeFile(`posts/${today}.md`, article);
 
-console.log(`created posts/${today}.md`);
+const outputFileName = latestLog.file;
+const outputPath = path.join("posts", outputFileName);
+
+await fs.writeFile(outputPath, article);
+
+console.log(`created ${outputPath}`);

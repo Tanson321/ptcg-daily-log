@@ -7,8 +7,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "channels": "node scripts/list-channels.js",
-    "fetch": "node scripts/fetch-today.js",
-    "generate": "node scripts/generate-post.js"
+    "fetch:today": "node scripts/fetch-today.js --range=today",
+    "fetch:week": "node scripts/fetch-today.js --range=week",
+    "generate": "node scripts/generate-post.js",
+    "build:today": "npm run fetch:today && npm run generate",
+    "build:week": "npm run fetch:week && npm run generate"
   },
   "keywords": [],
   "author": "",
