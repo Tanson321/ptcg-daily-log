@@ -93,6 +93,18 @@ function createPostPath(logPath) {
   return path.join("posts", fileName);
 }
 
+function getPostDateFromLogPath(logPath) {
+  const fileName = path.basename(logPath);
+  const match = fileName.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : formatDateInTokyo(new Date());
+}
+
+function getPostType(range) {
+  if (range === "week") return "weekly";
+  if (range === "today") return "daily";
+  return range;
+}
+
 async function generateWithRetry(prompt, maxRetries = 3) {
   let lastError;
 
@@ -141,6 +153,9 @@ console.log(`using log: ${logPath}`);
 
 const input = await fs.readFile(logPath, "utf-8");
 
+const postDate = getPostDateFromLogPath(logPath);
+const postType = getPostType(range);
+
 const persona = await fs.readFile("prompts/luka-persona.md", "utf-8");
 const style = await fs.readFile("prompts/article-style.md", "utf-8");
 const structure = await fs.readFile("prompts/article-structure.md", "utf-8");
@@ -151,6 +166,36 @@ ${persona}
 ${style}
 
 ${structure}
+
+# 出力メタデータ
+
+出力するMarkdownの先頭には、必ずYAML frontmatterを付けてください。
+frontmatterは必ずMarkdownの一番先頭に置き、前に空行や説明文を入れないでください。
+
+必須形式:
+
+---
+title: 記事タイトル
+date: ${postDate}
+type: ${postType}
+tags:
+  - タグ1
+  - タグ2
+summary: この記事の要約
+---
+
+# 記事タイトル
+
+frontmatterのルール:
+- title は本文最初の h1 と同じ内容にする
+- date は必ず \`${postDate}\` にする
+- type は必ず \`${postType}\` にする
+- tags は本文中で重要だったカード名、デッキ名、テーマを3〜8個程度入れる
+- tags には \`#\` を付けない
+- summary は一覧表示用の短い要約にする
+- summary は1〜2文程度にする
+- frontmatter以外の説明文を出力しない
+- コードブロックで囲まない
 
 Discordログ:
 
