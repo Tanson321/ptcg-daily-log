@@ -1,15 +1,17 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { listGitHubDirectory } from "@/lib/github";
 import Link from "next/link";
 
-const POSTS_DIR = path.join(process.cwd(), "..", "posts");
-
 async function getDrafts() {
-  const files = await fs.readdir(POSTS_DIR);
+  const files = await listGitHubDirectory("posts");
 
   return files
-    .filter((file) => file.endsWith(".md"))
+
+    .filter((file) => file.type === "file" && file.name.endsWith(".md"))
+
+    .map((file) => file.name)
+
     .sort()
+
     .reverse();
 }
 
