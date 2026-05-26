@@ -27,6 +27,7 @@ function extractTitle(markdown, fallback) {
 
 function parsePost(markdown, fallback) {
   const parsed = matter(markdown);
+  const source = parsed.data.source || "ai";
 
   const title = parsed.data.title || extractTitle(parsed.content, fallback);
 
@@ -45,9 +46,32 @@ function parsePost(markdown, fallback) {
     date,
     tags,
     type,
+    source,
     summary,
     content: parsed.content,
   };
+}
+
+function formatDisplayDate(date) {
+  if (!date) return "";
+
+  const d = new Date(date);
+
+  if (Number.isNaN(d.getTime())) {
+    return String(date).slice(0, 10).replaceAll("-", "/");
+  }
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
+}
+
+function getSourceLabel(source) {
+  if (source === "manual") return "手動";
+  if (source === "ai") return "AI";
+  return source;
 }
 
 function createLayout({ title, content }) {
@@ -165,7 +189,7 @@ async function buildPosts(files) {
 
         <header class="mt-8 border-b border-zinc-200 pb-8">
           <div class="flex flex-wrap items-center gap-2 text-sm text-zinc-500">
-            <span>${post.date}</span>
+            <span>${formatDisplayDate(post.date)}</span>
             <span>•</span>
             <span>${post.type}</span>
           </div>
@@ -224,12 +248,15 @@ async function buildIndex(files) {
           href="./posts/${post.htmlFile}"
           class="block rounded-2xl border border-zinc-200 bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg"
         >
+        <div class="mb-6 inline-flex rounded-full bg-indigo-600 px-3 py-1 text-sm font-bold text-white">
+  ${getSourceLabel(post.source)}
+        </div>
           <div class="text-lg font-semibold">
             ${post.title}
           </div>
 
           <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
-            <span>${post.date}</span>
+            <span>${formatDisplayDate(post.date)}</span>
             <span>•</span>
             <span>${post.type}</span>
           </div>

@@ -181,6 +181,7 @@ type: ${postType}
 tags:
   - タグ1
   - タグ2
+source: ai
 summary: この記事の要約
 ---
 
@@ -195,6 +196,7 @@ frontmatterのルール:
 - summary は一覧表示用の短い要約にする
 - summary は1〜2文程度にする
 - frontmatter以外の説明文を出力しない
+- source は必ず ai にする
 - コードブロックで囲まない
 
 Discordログ:
