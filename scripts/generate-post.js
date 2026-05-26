@@ -7,43 +7,101 @@ const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
 });
 
-async function getLatestLogFile() {
-  const files = await fs.readdir("logs");
+const TIME_ZONE = "Asia/Tokyo";
 
-  const markdownFiles = files.filter((file) => file.endsWith(".md"));
-
-  if (markdownFiles.length === 0) {
-    throw new Error("logs に markdown ファイルがありません");
-  }
-
-  const filesWithStats = await Promise.all(
-    markdownFiles.map(async (file) => {
-      const fullPath = path.join("logs", file);
-      const stat = await fs.stat(fullPath);
-
-      return {
-        file,
-        fullPath,
-        mtime: stat.mtime,
-      };
-    }),
-  );
-
-  filesWithStats.sort((a, b) => b.mtime - a.mtime);
-
-  return filesWithStats[0];
+function getArgValue(name, defaultValue) {
+  const prefix = `--${name}=`;
+  const arg = process.argv.find((item) => item.startsWith(prefix));
+  return arg ? arg.slice(prefix.length) : defaultValue;
 }
 
-const latestLog = await getLatestLogFile();
+function formatDateInTokyo(date) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
 
-console.log(`using log: ${latestLog.file}`);
+function getTokyoDateParts(date) {
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  });
 
-const input = await fs.readFile(latestLog.fullPath, "utf-8");
+  const parts = Object.fromEntries(
+    formatter.formatToParts(date).map((part) => [part.type, part.value]),
+  );
+
+  return {
+    year: Number(parts.year),
+    month: Number(parts.month),
+    day: Number(parts.day),
+    weekday: parts.weekday,
+  };
+}
+
+function toTokyoStartOfDayUtcDate({ year, month, day }) {
+  const yyyy = String(year).padStart(4, "0");
+  const mm = String(month).padStart(2, "0");
+  const dd = String(day).padStart(2, "0");
+
+  return new Date(`${yyyy}-${mm}-${dd}T00:00:00+09:00`);
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next;
+}
+
+function getTargetLogPath(range) {
+  const now = new Date();
+  const todayParts = getTokyoDateParts(now);
+  const todayStart = toTokyoStartOfDayUtcDate(todayParts);
+
+  if (range === "today") {
+    return `logs/${formatDateInTokyo(todayStart)}.md`;
+  }
+
+  if (range === "week") {
+    const weekdayIndexMap = {
+      Mon: 0,
+      Tue: 1,
+      Wed: 2,
+      Thu: 3,
+      Fri: 4,
+      Sat: 5,
+      Sun: 6,
+    };
+
+    const daysFromMonday = weekdayIndexMap[todayParts.weekday] ?? 0;
+    const weekStart = addDays(todayStart, -daysFromMonday);
+
+    return `logs/${formatDateInTokyo(weekStart)}-week.md`;
+  }
+
+  throw new Error("--range は today または week を指定してください");
+}
+
+function createPostPath(logPath) {
+  const fileName = path.basename(logPath);
+  return path.join("posts", fileName);
+}
+
+const range = getArgValue("range", "today");
+const logPath = getTargetLogPath(range);
+
+console.log(`using log: ${logPath}`);
+
+const input = await fs.readFile(logPath, "utf-8");
 
 const persona = await fs.readFile("prompts/luka-persona.md", "utf-8");
-
 const style = await fs.readFile("prompts/article-style.md", "utf-8");
-
 const structure = await fs.readFile("prompts/article-structure.md", "utf-8");
 
 const prompt = `
@@ -67,8 +125,7 @@ const article = response.text;
 
 await fs.mkdir("posts", { recursive: true });
 
-const outputFileName = latestLog.file;
-const outputPath = path.join("posts", outputFileName);
+const outputPath = createPostPath(logPath);
 
 await fs.writeFile(outputPath, article);
 
