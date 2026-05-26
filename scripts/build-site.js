@@ -19,6 +19,11 @@ async function getMarkdownFiles(dir) {
     .reverse();
 }
 
+function extractTitle(markdown, fallback) {
+  const match = markdown.match(/^#\s+(.+)$/m);
+  return match ? match[1].trim() : fallback.replace(/\.md$/, "");
+}
+
 function createLayout({ title, content }) {
   return `
 <!doctype html>
@@ -118,11 +123,12 @@ async function buildPosts(files) {
     const src = path.join(POSTS_DIR, file);
 
     const markdown = await fs.readFile(src, "utf-8");
+    const title = extractTitle(markdown, file);
 
     const html = marked.parse(markdown);
 
     const page = createLayout({
-      title: file,
+      title,
       content: `
         <a
           href="../index.html"
@@ -147,21 +153,34 @@ async function buildPosts(files) {
 }
 
 async function buildIndex(files) {
-  const links = files
-    .map((file) => {
+  const posts = await Promise.all(
+    files.map(async (file) => {
+      const src = path.join(POSTS_DIR, file);
+      const markdown = await fs.readFile(src, "utf-8");
+      const title = extractTitle(markdown, file);
       const htmlFile = file.replace(/\.md$/, ".html");
 
+      return {
+        file,
+        title,
+        htmlFile,
+      };
+    }),
+  );
+
+  const links = posts
+    .map((post) => {
       return `
         <a
-          href="./posts/${htmlFile}"
+          href="./posts/${post.htmlFile}"
           class="block rounded-2xl border border-zinc-200 bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg"
         >
           <div class="text-lg font-semibold">
-            ${file.replace(/\.md$/, "")}
+            ${post.title}
           </div>
 
           <div class="mt-2 text-sm text-zinc-500">
-            Thought log / Luka CMS
+            ${post.file.replace(/\.md$/, "")}
           </div>
         </a>
       `;
