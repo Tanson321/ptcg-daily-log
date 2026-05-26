@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { marked } from "marked";
 
 const POSTS_DIR = "published";
 const SITE_DIR = "docs";
@@ -18,70 +19,180 @@ async function getMarkdownFiles(dir) {
     .reverse();
 }
 
-async function copyPosts(files) {
-  for (const file of files) {
-    const src = path.join(POSTS_DIR, file);
-    const dest = path.join(SITE_POSTS_DIR, file);
-
-    await fs.copyFile(src, dest);
-  }
-}
-
-function createIndexHtml(files) {
-  const links = files
-    .map((file) => {
-      return `<li><a href="./posts/${file}">${file}</a></li>`;
-    })
-    .join("\n");
-
+function createLayout({ title, content }) {
   return `
 <!doctype html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8" />
-  <title>PTCG Thought Log</title>
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  />
+
+  <title>${title}</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
 
   <style>
     body {
-      font-family: sans-serif;
-      max-width: 720px;
-      margin: 40px auto;
-      padding: 0 16px;
-      line-height: 1.7;
+      font-family:
+        Inter,
+        -apple-system,
+        BlinkMacSystemFont,
+        sans-serif;
     }
 
-    h1 {
-      margin-bottom: 32px;
+    .prose h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-top: 2.5rem;
+      margin-bottom: 1rem;
     }
 
-    ul {
-      padding-left: 20px;
+    .prose h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-top: 2rem;
+      margin-bottom: 1rem;
     }
 
-    li {
-      margin-bottom: 12px;
+    .prose h3 {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin-top: 1.5rem;
+      margin-bottom: 0.75rem;
     }
 
-    a {
-      color: #2563eb;
-      text-decoration: none;
+    .prose p {
+      line-height: 1.9;
+      margin-bottom: 1.2rem;
     }
 
-    a:hover {
-      text-decoration: underline;
+    .prose ul {
+      padding-left: 1.5rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .prose li {
+      margin-bottom: 0.5rem;
+    }
+
+    .prose code {
+      background: #f3f4f6;
+      padding: 0.2rem 0.4rem;
+      border-radius: 0.4rem;
+      font-size: 0.9rem;
+    }
+
+    .prose pre {
+      background: #111827;
+      color: white;
+      padding: 1rem;
+      border-radius: 1rem;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+    }
+
+    .prose blockquote {
+      border-left: 4px solid #d1d5db;
+      padding-left: 1rem;
+      color: #6b7280;
+      margin: 1.5rem 0;
     }
   </style>
 </head>
 
-<body>
-  <h1>PTCG Thought Log</h1>
-
-  <ul>
-    ${links}
-  </ul>
+<body class="bg-zinc-50 text-zinc-900">
+  <div class="mx-auto max-w-3xl px-6 py-12">
+    ${content}
+  </div>
 </body>
 </html>
 `;
+}
+
+async function buildPosts(files) {
+  for (const file of files) {
+    const src = path.join(POSTS_DIR, file);
+
+    const markdown = await fs.readFile(src, "utf-8");
+
+    const html = marked.parse(markdown);
+
+    const page = createLayout({
+      title: file,
+      content: `
+        <a
+          href="../index.html"
+          class="text-sm text-zinc-500 hover:text-zinc-900"
+        >
+          ← Back
+        </a>
+
+        <article class="prose mt-8 max-w-none">
+          ${html}
+        </article>
+      `,
+    });
+
+    const outputPath = path.join(
+      SITE_POSTS_DIR,
+      file.replace(/\.md$/, ".html"),
+    );
+
+    await fs.writeFile(outputPath, page);
+  }
+}
+
+async function buildIndex(files) {
+  const links = files
+    .map((file) => {
+      const htmlFile = file.replace(/\.md$/, ".html");
+
+      return `
+        <a
+          href="./posts/${htmlFile}"
+          class="block rounded-2xl border border-zinc-200 bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg"
+        >
+          <div class="text-lg font-semibold">
+            ${file.replace(/\.md$/, "")}
+          </div>
+
+          <div class="mt-2 text-sm text-zinc-500">
+            Thought log / Luka CMS
+          </div>
+        </a>
+      `;
+    })
+    .join("\n");
+
+  const page = createLayout({
+    title: "LUKA-PTCG-NOTES",
+    content: `
+      <header>
+        <div class="text-sm uppercase tracking-widest text-zinc-500">
+          PTCG-LOG
+        </div>
+
+        <h1 class="mt-3 text-5xl font-black tracking-tight">
+          PTCG Thought Log
+        </h1>
+
+        <p class="mt-6 text-lg leading-8 text-zinc-600">
+          Discord上でメモした思考・議論・仮説を、
+          AIが整理し、公開可能な形へ編集したログ。
+        </p>
+      </header>
+
+      <section class="mt-14 space-y-5">
+        ${links}
+      </section>
+    `,
+  });
+
+  await fs.writeFile(path.join(SITE_DIR, "index.html"), page);
 }
 
 const files = await getMarkdownFiles(POSTS_DIR);
@@ -89,10 +200,8 @@ const files = await getMarkdownFiles(POSTS_DIR);
 await ensureDir(SITE_DIR);
 await ensureDir(SITE_POSTS_DIR);
 
-await copyPosts(files);
+await buildPosts(files);
 
-const html = createIndexHtml(files);
-
-await fs.writeFile(path.join(SITE_DIR, "index.html"), html);
+await buildIndex(files);
 
 console.log("site built");
