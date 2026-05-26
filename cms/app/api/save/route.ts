@@ -1,8 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { NextRequest, NextResponse } from "next/server";
-
-const POSTS_DIR = path.join(process.cwd(), "..", "posts");
+import { getGitHubFile, putGitHubFile } from "@/lib/github";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -17,9 +14,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const filePath = path.join(POSTS_DIR, slug);
+  const filePath = `posts/${slug}`;
+  const current = await getGitHubFile(filePath);
 
-  await fs.writeFile(filePath, content, "utf-8");
+  await putGitHubFile({
+    path: filePath,
+    content,
+    sha: current.sha,
+    message: `update draft ${slug}`,
+  });
 
   return NextResponse.json({ ok: true });
 }

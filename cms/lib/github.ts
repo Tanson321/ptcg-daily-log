@@ -53,3 +53,38 @@ export async function listGitHubDirectory(path: string) {
     sha: string;
   }>;
 }
+
+export async function putGitHubFile({
+  path,
+  content,
+  message,
+  sha,
+}: {
+  path: string;
+  content: string;
+  message: string;
+  sha?: string;
+}) {
+  const encodedContent = Buffer.from(content, "utf-8").toString("base64");
+
+  const res = await fetch(`${baseUrl}/${path}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message,
+      content: encodedContent,
+      sha,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to put ${path}: ${res.status} ${text}`);
+  }
+
+  return await res.json();
+}
