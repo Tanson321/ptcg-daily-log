@@ -88,3 +88,35 @@ export async function putGitHubFile({
 
   return await res.json();
 }
+export async function dispatchWorkflow({
+  workflowId,
+  ref = "main",
+  inputs,
+}: {
+  workflowId: string;
+  ref?: string;
+  inputs?: Record<string, string>;
+}) {
+  const res = await fetch(
+    `https://api.github.com/repos/${owner}/${repo}/actions/workflows/${workflowId}/dispatches`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        ref,
+        inputs,
+      }),
+    },
+  );
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `Failed to dispatch workflow ${workflowId}: ${res.status} ${text}`,
+    );
+  }
+}

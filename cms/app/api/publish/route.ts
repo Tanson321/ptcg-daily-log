@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGitHubFile, putGitHubFile } from "@/lib/github";
+import { dispatchWorkflow, getGitHubFile, putGitHubFile } from "@/lib/github";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -28,6 +28,10 @@ export async function POST(request: NextRequest) {
     content: draft.content,
     sha: currentPublishedSha,
     message: `publish ${slug}`,
+  });
+
+  await dispatchWorkflow({
+    workflowId: "publish-pages.yml",
   });
 
   return NextResponse.json({
