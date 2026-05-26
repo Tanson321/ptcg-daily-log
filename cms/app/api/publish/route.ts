@@ -1,22 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { NextRequest, NextResponse } from "next/server";
-
-const execFileAsync = promisify(execFile);
-
-const ROOT_DIR = path.join(process.cwd(), "..");
-const POSTS_DIR = path.join(ROOT_DIR, "posts");
-const PUBLISHED_DIR = path.join(ROOT_DIR, "published");
-
-async function run(command: string, args: string[]) {
-  const result = await execFileAsync(command, args, {
-    cwd: ROOT_DIR,
-  });
-
-  return result;
-}
+import { getGitHubFile, putGitHubFile } from "@/lib/github";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -26,32 +9,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "slug is required" }, { status: 400 });
   }
 
-  const srcPath = path.join(POSTS_DIR, slug);
-  const destPath = path.join(PUBLISHED_DIR, slug);
+  const draftPath = `posts/${slug}`;
+  const publishedPath = `published/${slug}`;
 
-  const content = await fs.readFile(srcPath, "utf-8");
+  const draft = await getGitHubFile(draftPath);
 
-  await fs.mkdir(PUBLISHED_DIR, { recursive: true });
-  await fs.writeFile(destPath, content, "utf-8");
+  let currentPublishedSha: string | undefined;
 
-  await run("git", ["pull", "--rebase", "--autostash"]);
-  await run("npm", ["run", "site"]);
-  await run("git", ["add", "posts", "published", "docs"]);
-  await run("git", ["commit", "-m", `publish ${slug}`]).catch((error) => {
-    const stderr = String(error?.stderr ?? "");
-    const stdout = String(error?.stdout ?? "");
+  try {
+    const currentPublished = await getGitHubFile(publishedPath);
+    currentPublishedSha = currentPublished.sha;
+  } catch {
+    currentPublishedSha = undefined;
+  }
 
-    if (
-      stderr.includes("nothing to commit") ||
-      stdout.includes("nothing to commit")
-    ) {
-      return;
-    }
-
-    throw error;
+  await putGitHubFile({
+    path: publishedPath,
+    content: draft.content,
+    sha: currentPublishedSha,
+    message: `publish ${slug}`,
   });
-
-  await run("git", ["push"]);
 
   return NextResponse.json({
     ok: true,
