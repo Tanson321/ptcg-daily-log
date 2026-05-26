@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-const POSTS_DIR = "posts";
+const POSTS_DIR = "published";
 const SITE_DIR = "docs";
 const SITE_POSTS_DIR = path.join(SITE_DIR, "posts");
 
