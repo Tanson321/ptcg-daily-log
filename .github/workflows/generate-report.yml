@@ -70,3 +70,25 @@ jobs:
             git commit -m "generate ptcg report"
             git push
           fi
+
+      - name: Notify Discord
+        if: success()
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            RANGE="week"
+          else
+            RANGE="${{ github.event.inputs.range }}"
+          fi
+
+          if [ "$RANGE" = "week" ]; then
+            FILE="$(ls -t posts/*-week.md | head -n 1)"
+          else
+            FILE="$(ls -t posts/*.md | grep -v -- '-week.md' | head -n 1)"
+          fi
+
+          FILENAME="$(basename "$FILE")"
+          CMS_URL="http://localhost:3000/posts/$FILENAME"
+
+          curl -H "Content-Type: application/json" \
+            -d "{\"content\":\"🧠 下書きが生成されたよ\n\n対象: $FILENAME\n編集: $CMS_URL\"}" \
+            "${{ secrets.DISCORD_WEBHOOK_URL }}"
