@@ -93,6 +93,47 @@ function createPostPath(logPath) {
   return path.join("posts", fileName);
 }
 
+async function generateWithRetry(prompt, maxRetries = 3) {
+  let lastError;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+      });
+    } catch (error) {
+      lastError = error;
+
+      const status = error?.status;
+      const message = error?.message ?? "";
+
+      const retryable =
+        status === 429 ||
+        status === 500 ||
+        status === 502 ||
+        status === 503 ||
+        status === 504 ||
+        message.includes("UNAVAILABLE") ||
+        message.includes("high demand");
+
+      if (!retryable || attempt === maxRetries) {
+        throw error;
+      }
+
+      const waitMs = attempt * 15000;
+
+      console.log(
+        `Gemini API retry ${attempt}/${maxRetries} after ${waitMs / 1000}s`,
+      );
+
+      await new Promise((resolve) => setTimeout(resolve, waitMs));
+    }
+  }
+
+  throw lastError;
+}
+
 const range = getArgValue("range", "today");
 const logPath = getTargetLogPath(range);
 
@@ -116,10 +157,7 @@ Discordログ:
 ${input}
 `;
 
-const response = await ai.models.generateContent({
-  model: "gemini-2.5-flash",
-  contents: prompt,
-});
+const response = await generateWithRetry(prompt);
 
 const article = response.text;
 
