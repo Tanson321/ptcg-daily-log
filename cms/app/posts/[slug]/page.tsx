@@ -1,14 +1,10 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import { getGitHubFile } from "@/lib/github";
 import Link from "next/link";
 import Editor from "./editor";
 
-const POSTS_DIR = path.join(process.cwd(), "..", "posts");
-
 async function getPost(slug: string) {
-  const filePath = path.join(POSTS_DIR, slug);
-
-  return await fs.readFile(filePath, "utf-8");
+  const file = await getGitHubFile(`posts/${slug}`);
+  return file.content;
 }
 
 export default async function PostPage({
