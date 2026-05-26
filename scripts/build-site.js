@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { marked } from "marked";
+import matter from "gray-matter";
 
 const POSTS_DIR = "published";
 const SITE_DIR = "docs";
@@ -22,6 +23,31 @@ async function getMarkdownFiles(dir) {
 function extractTitle(markdown, fallback) {
   const match = markdown.match(/^#\s+(.+)$/m);
   return match ? match[1].trim() : fallback.replace(/\.md$/, "");
+}
+
+function parsePost(markdown, fallback) {
+  const parsed = matter(markdown);
+
+  const title = parsed.data.title || extractTitle(parsed.content, fallback);
+
+  const date =
+    parsed.data.date || fallback.replace(/-week\.md$/, "").replace(/\.md$/, "");
+
+  const tags = Array.isArray(parsed.data.tags) ? parsed.data.tags : [];
+
+  const type =
+    parsed.data.type || (fallback.includes("-week") ? "weekly" : "daily");
+
+  const summary = parsed.data.summary || "";
+
+  return {
+    title,
+    date,
+    tags,
+    type,
+    summary,
+    content: parsed.content,
+  };
 }
 
 function createLayout({ title, content }) {
@@ -123,12 +149,12 @@ async function buildPosts(files) {
     const src = path.join(POSTS_DIR, file);
 
     const markdown = await fs.readFile(src, "utf-8");
-    const title = extractTitle(markdown, file);
+    const post = parsePost(markdown, file);
 
-    const html = marked.parse(markdown);
+    const html = marked.parse(post.content);
 
     const page = createLayout({
-      title,
+      title: post.title,
       content: `
         <a
           href="../index.html"
@@ -136,6 +162,29 @@ async function buildPosts(files) {
         >
           ← Back
         </a>
+
+        <header class="mt-8 border-b border-zinc-200 pb-8">
+          <div class="flex flex-wrap items-center gap-2 text-sm text-zinc-500">
+            <span>${post.date}</span>
+            <span>•</span>
+            <span>${post.type}</span>
+          </div>
+
+          ${post.summary ? `<p class="mt-4 text-lg leading-8 text-zinc-600">${post.summary}</p>` : ""}
+
+          ${
+            post.tags.length > 0
+              ? `<div class="mt-5 flex flex-wrap gap-2">
+                  ${post.tags
+                    .map(
+                      (tag) =>
+                        `<span class="rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-600">#${tag}</span>`,
+                    )
+                    .join("\n")}
+                </div>`
+              : ""
+          }
+        </header>
 
         <article class="prose mt-8 max-w-none">
           ${html}
@@ -157,13 +206,13 @@ async function buildIndex(files) {
     files.map(async (file) => {
       const src = path.join(POSTS_DIR, file);
       const markdown = await fs.readFile(src, "utf-8");
-      const title = extractTitle(markdown, file);
+      const post = parsePost(markdown, file);
       const htmlFile = file.replace(/\.md$/, ".html");
 
       return {
         file,
-        title,
         htmlFile,
+        ...post,
       };
     }),
   );
@@ -179,9 +228,26 @@ async function buildIndex(files) {
             ${post.title}
           </div>
 
-          <div class="mt-2 text-sm text-zinc-500">
-            ${post.file.replace(/\.md$/, "")}
+          <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
+            <span>${post.date}</span>
+            <span>•</span>
+            <span>${post.type}</span>
           </div>
+
+          ${post.summary ? `<p class="mt-4 text-sm leading-6 text-zinc-600">${post.summary}</p>` : ""}
+
+          ${
+            post.tags.length > 0
+              ? `<div class="mt-4 flex flex-wrap gap-2">
+                  ${post.tags
+                    .map(
+                      (tag) =>
+                        `<span class="rounded-full bg-zinc-100 px-2.5 py-1 text-xs text-zinc-600">#${tag}</span>`,
+                    )
+                    .join("\n")}
+                </div>`
+              : ""
+          }
         </a>
       `;
     })
