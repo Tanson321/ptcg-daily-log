@@ -87,7 +87,7 @@ jobs:
           fi
 
           FILENAME="$(basename "$FILE")"
-          CMS_URL="http://localhost:3000/posts/$FILENAME"
+          CMS_URL="http://ptcg-daily-log.vercel.app/posts/$FILENAME"
 
           curl -H "Content-Type: application/json" \
             -d "{\"content\":\"🧠 下書きが生成されたよ\n\n対象: $FILENAME\n編集: $CMS_URL\"}" \
