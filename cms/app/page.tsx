@@ -20,8 +20,15 @@ export default async function Home() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <h1 className="text-3xl font-bold">ルカCMS</h1>
-
+      <h1 className="text-3xl font-bold">PTCG-CMS</h1>
+      <div className="mt-6">
+        <Link
+          href="/generate"
+          className="inline-flex items-center rounded-2xl border border-zinc-200 bg-white px-5 py-3 text-sm font-medium transition hover:-translate-y-0.5 hover:shadow-md"
+        >
+          ⚡ Generate Drafts
+        </Link>
+      </div>
       <p className="mt-3 text-gray-600">
         AIが生成した下書き一覧です。ここから確認・編集・公開します。
       </p>
