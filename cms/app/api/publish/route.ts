@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   await fs.writeFile(destPath, content, "utf-8");
 
   await run("npm", ["run", "site"]);
-
+  await run("git", ["pull", "--rebase"]);
   await run("git", ["add", "published", "docs"]);
   await run("git", ["commit", "-m", `publish ${slug}`]).catch((error) => {
     const stderr = String(error?.stderr ?? "");
