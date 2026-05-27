@@ -19,16 +19,18 @@ export default async function PostPage({
   const content = await getPost(decodedSlug);
 
   return (
-    <main className="mx-auto max-w-4xl px-6 py-10">
-      <Link href="/" className="text-sm text-blue-600 hover:underline">
-        ← 戻る
+    <main className="mx-auto w-full max-w-4xl flex-1 px-6 py-8">
+      <Link href="/" className="text-sm font-medium text-cyan-700 hover:text-cyan-900">
+        下書き一覧へ
       </Link>
 
-      <h1 className="mt-4 text-3xl font-bold">{decodedSlug}</h1>
+      <header className="mt-5 border-b border-zinc-200 pb-5">
+        <p className="font-mono text-xs text-zinc-500">{decodedSlug}</p>
+        <h1 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+          Edit draft
+        </h1>
+      </header>
 
-      {/* <pre className="mt-8 overflow-x-auto rounded-2xl border bg-gray-50 p-6 whitespace-pre-wrap text-sm leading-7">
-        {content}
-      </pre> */}
       <Editor slug={decodedSlug} initialContent={content} />
     </main>
   );

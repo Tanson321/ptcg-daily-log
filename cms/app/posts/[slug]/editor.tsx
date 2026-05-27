@@ -109,7 +109,45 @@ export default function Editor({ slug, initialContent }: Props) {
 
   return (
     <div className="mt-8 space-y-6">
-      <div className="grid gap-4 rounded-3xl border border-zinc-200 bg-white p-6">
+      <div className="sticky top-0 z-10 -mx-6 border-b border-zinc-200 bg-zinc-50/95 px-6 py-3 backdrop-blur">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="truncate font-mono text-xs text-zinc-500">{slug}</p>
+            <p className="truncate text-sm font-medium text-zinc-900">
+              {title || "Untitled draft"}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={save}
+              disabled={saving}
+              className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100 disabled:opacity-50"
+            >
+              {saving ? "保存中..." : "保存"}
+            </button>
+
+            <button
+              onClick={publish}
+              disabled={saving}
+              className="rounded-lg bg-cyan-700 px-4 py-2 text-sm font-medium text-white transition hover:bg-cyan-800 disabled:opacity-50"
+            >
+              {saving ? "公開中..." : "公開"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <section className="grid gap-4 rounded-lg border border-zinc-200 bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 pb-4">
+          <div>
+            <h2 className="text-base font-semibold text-zinc-950">Metadata</h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              一覧表示と公開ページに使う情報です。
+            </p>
+          </div>
+        </div>
+
         <div>
           <label className="mb-2 block text-sm font-medium text-zinc-700">
             Title
@@ -118,7 +156,7 @@ export default function Editor({ slug, initialContent }: Props) {
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm"
+            className="w-full rounded-lg border border-zinc-200 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
           />
         </div>
 
@@ -131,7 +169,7 @@ export default function Editor({ slug, initialContent }: Props) {
             <input
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm"
+              className="w-full rounded-lg border border-zinc-200 px-4 py-3 font-mono text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
             />
           </div>
 
@@ -143,7 +181,7 @@ export default function Editor({ slug, initialContent }: Props) {
             <input
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm"
+              className="w-full rounded-lg border border-zinc-200 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
             />
           </div>
         </div>
@@ -157,7 +195,7 @@ export default function Editor({ slug, initialContent }: Props) {
             <input
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm"
+              className="w-full rounded-lg border border-zinc-200 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
             />
           </div>
 
@@ -170,7 +208,7 @@ export default function Editor({ slug, initialContent }: Props) {
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="ドラパルト, メタ読み"
-              className="w-full rounded-2xl border border-zinc-200 px-4 py-3 text-sm"
+              className="w-full rounded-lg border border-zinc-200 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
             />
           </div>
         </div>
@@ -183,39 +221,30 @@ export default function Editor({ slug, initialContent }: Props) {
           <textarea
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
-            className="min-h-[120px] w-full rounded-2xl border border-zinc-200 p-4 text-sm leading-7"
+            className="min-h-[112px] w-full rounded-lg border border-zinc-200 p-4 text-sm leading-7 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
           />
         </div>
-      </div>
+      </section>
 
-      <div>
-        <label className="mb-2 block text-sm font-medium text-zinc-700">
-          Body
-        </label>
+      <section>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <label className="block text-sm font-medium text-zinc-700">
+            Body
+          </label>
+          <span className="font-mono text-xs text-zinc-500">
+            {body.length.toLocaleString()} chars
+          </span>
+        </div>
 
         <textarea
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          className="min-h-[70vh] w-full rounded-3xl border border-zinc-200 bg-white p-6 font-mono text-sm leading-7"
+          className="min-h-[70vh] w-full rounded-lg border border-zinc-200 bg-white p-5 font-mono text-sm leading-7 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
         />
-      </div>
+      </section>
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={save}
-          disabled={saving}
-          className="rounded-2xl bg-black px-5 py-3 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {saving ? "保存中..." : "保存"}
-        </button>
-
-        <button
-          onClick={publish}
-          disabled={saving}
-          className="rounded-2xl bg-indigo-600 px-5 py-3 text-sm font-medium text-white disabled:opacity-50"
-        >
-          {saving ? "公開中..." : "公開"}
-        </button>
+      <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
+        保存すると下書きに反映され、公開すると published にコピーして静的サイト生成を起動します。
       </div>
     </div>
   );
