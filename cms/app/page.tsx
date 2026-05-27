@@ -2,6 +2,7 @@ import { listGitHubDirectory } from "@/lib/github";
 import { getGitHubFile } from "@/lib/github";
 import { parseMarkdownPost } from "@/lib/markdown";
 import Link from "next/link";
+import NewNoteForm from "./new-note-form";
 
 async function getDrafts() {
   const files = await listGitHubDirectory("posts");
@@ -93,12 +94,16 @@ export default async function Home() {
           </p>
         </div>
 
-        <Link
-          href="/generate"
-          className="inline-flex items-center rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800"
-        >
-          Generate
-        </Link>
+        <div className="flex w-full flex-col items-stretch gap-2 md:w-auto md:items-end">
+          <NewNoteForm />
+
+          <Link
+            href="/generate"
+            className="inline-flex items-center rounded-lg bg-zinc-950 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800"
+          >
+            Generate
+          </Link>
+        </div>
       </section>
 
       <section className="mt-5">

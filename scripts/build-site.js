@@ -40,6 +40,7 @@ function parsePost(markdown, fallback) {
     parsed.data.type || (fallback.includes("-week") ? "weekly" : "daily");
 
   const summary = parsed.data.summary || "";
+  const primaryImage = parsed.data.primaryImage || parsed.data.deckImage || "";
 
   return {
     title,
@@ -48,6 +49,7 @@ function parsePost(markdown, fallback) {
     type,
     source,
     summary,
+    primaryImage,
     content: parsed.content,
   };
 }
@@ -105,6 +107,12 @@ function renderTagChips(tags, size = "sm") {
         `<span class="rounded-md bg-zinc-100 ${sizeClass} text-zinc-600">#${escapeHtml(tag)}</span>`,
     )
     .join("\n");
+}
+
+function renderPrimaryImage(src, alt, classes) {
+  if (!src) return "";
+
+  return `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" class="${classes}" loading="lazy" />`;
 }
 
 function createLayout({ title, content }) {
@@ -211,6 +219,11 @@ async function buildPosts(files) {
     const html = marked.parse(stripLeadingHeading(post.content));
     const displayDate = formatDisplayDate(post.date);
     const tagChips = renderTagChips(post.tags);
+    const primaryImage = renderPrimaryImage(
+      post.primaryImage,
+      `${post.title} primary image`,
+      "mt-6 aspect-video w-full rounded-lg border border-zinc-200 object-cover",
+    );
 
     const page = createLayout({
       title: post.title,
@@ -236,6 +249,8 @@ async function buildPosts(files) {
           </div>
 
           ${post.summary ? `<p class="mt-4 text-lg leading-8 text-zinc-600">${escapeHtml(post.summary)}</p>` : ""}
+
+          ${primaryImage}
 
           ${
             post.tags.length > 0
@@ -281,12 +296,19 @@ async function buildIndex(files) {
     .map((post) => {
       const displayDate = formatDisplayDate(post.date);
       const tagChips = renderTagChips(post.tags, "xs");
+      const primaryImage = renderPrimaryImage(
+        post.primaryImage,
+        `${post.title} primary image`,
+        "mb-5 aspect-video w-full rounded-lg border border-zinc-200 object-cover",
+      );
 
       return `
         <a
           href="./posts/${post.htmlFile}"
           class="block rounded-lg border border-zinc-200 bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg"
         >
+          ${primaryImage}
+
           <div class="mb-5 flex flex-wrap gap-2">
             <span class="rounded-md bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-800">
               ${escapeHtml(getTypeLabel(post.type))}

@@ -20,9 +20,11 @@ export default function Editor({ slug, initialContent }: Props) {
   const [source, setSource] = useState(initialPost.source);
   const [tags, setTags] = useState(initialPost.tags.join(", "));
   const [summary, setSummary] = useState(initialPost.summary);
+  const [primaryImage, setPrimaryImage] = useState(initialPost.primaryImage);
   const [body, setBody] = useState(initialPost.body);
 
   const [saving, setSaving] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const content = serializeMarkdownPost({
     title,
@@ -34,6 +36,7 @@ export default function Editor({ slug, initialContent }: Props) {
       .map((tag) => tag.trim())
       .filter(Boolean),
     summary,
+    primaryImage,
     body,
   });
 
@@ -104,6 +107,36 @@ export default function Editor({ slug, initialContent }: Props) {
       alert("公開失敗");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function uploadDeckImage(file: File | null) {
+    if (!file) return;
+
+    try {
+      setUploadingImage(true);
+
+      const formData = new FormData();
+      formData.append("slug", slug);
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload-image", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const error = await res.json().catch(() => null);
+        throw new Error(error?.error || "image upload failed");
+      }
+
+      const data = await res.json();
+      setPrimaryImage(data.primaryImage);
+    } catch (error) {
+      console.error(error);
+      alert(error instanceof Error ? error.message : "画像アップロード失敗");
+    } finally {
+      setUploadingImage(false);
     }
   }
 
@@ -230,6 +263,58 @@ export default function Editor({ slug, initialContent }: Props) {
             onChange={(e) => setSummary(e.target.value)}
             className="min-h-[112px] w-full rounded-lg border border-zinc-200 p-4 text-sm leading-7 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
           />
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-[1fr_16rem]">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-zinc-700">
+              Primary image
+            </label>
+
+            <input
+              value={primaryImage}
+              onChange={(e) => setPrimaryImage(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-lg border border-zinc-200 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+            />
+
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <label className="inline-flex cursor-pointer items-center rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100">
+                {uploadingImage ? "アップロード中..." : "画像をアップロード"}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  disabled={uploadingImage}
+                  onChange={(e) => uploadDeckImage(e.target.files?.[0] ?? null)}
+                  className="sr-only"
+                />
+              </label>
+
+              {primaryImage ? (
+                <button
+                  onClick={() => setPrimaryImage("")}
+                  className="rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-900 transition hover:bg-zinc-100"
+                >
+                  画像を外す
+                </button>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-zinc-200 bg-zinc-50">
+            {primaryImage ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={primaryImage}
+                alt=""
+                className="aspect-video h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex aspect-video items-center justify-center px-4 text-center text-sm text-zinc-500">
+                Primary imageなし
+              </div>
+            )}
+          </div>
         </div>
       </section>
 

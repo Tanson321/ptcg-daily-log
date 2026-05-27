@@ -5,6 +5,7 @@ export type MarkdownPost = {
   source: string;
   tags: string[];
   summary: string;
+  primaryImage: string;
   body: string;
 };
 
@@ -15,6 +16,7 @@ const DEFAULT_POST: MarkdownPost = {
   source: "ai",
   tags: [],
   summary: "",
+  primaryImage: "",
   body: "",
 };
 
@@ -74,6 +76,18 @@ function parseFrontmatter(frontmatter: string) {
 
     if (line.startsWith("summary:")) {
       post.summary = parseYamlScalar(line.replace(/^summary:\s*/, ""));
+      continue;
+    }
+
+    if (line.startsWith("primaryImage:")) {
+      post.primaryImage = parseYamlScalar(
+        line.replace(/^primaryImage:\s*/, ""),
+      );
+      continue;
+    }
+
+    if (line.startsWith("deckImage:")) {
+      post.primaryImage = parseYamlScalar(line.replace(/^deckImage:\s*/, ""));
       continue;
     }
 
@@ -166,6 +180,7 @@ export function serializeMarkdownPost(post: MarkdownPost) {
     `source: ${escapeYamlValue(post.source)}`,
     tags ? `tags:\n${tags}` : "tags: []",
     `summary: ${escapeYamlValue(post.summary)}`,
+    `primaryImage: ${escapeYamlValue(post.primaryImage)}`,
     "---",
   ].join("\n");
 

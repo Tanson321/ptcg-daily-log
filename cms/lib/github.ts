@@ -88,6 +88,40 @@ export async function putGitHubFile({
 
   return await res.json();
 }
+
+export async function putGitHubFileBase64({
+  path,
+  encodedContent,
+  message,
+  sha,
+}: {
+  path: string;
+  encodedContent: string;
+  message: string;
+  sha?: string;
+}) {
+  const res = await fetch(`${baseUrl}/${path}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/vnd.github+json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      message,
+      content: encodedContent,
+      sha,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Failed to put ${path}: ${res.status} ${text}`);
+  }
+
+  return await res.json();
+}
+
 export async function dispatchWorkflow({
   workflowId,
   ref = "main",
