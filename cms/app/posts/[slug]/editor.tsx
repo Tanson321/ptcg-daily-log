@@ -178,11 +178,15 @@ export default function Editor({ slug, initialContent }: Props) {
               Type
             </label>
 
-            <input
+            <select
               value={type}
               onChange={(e) => setType(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
-            />
+              className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+            >
+              <option value="daily">daily</option>
+              <option value="weekly">weekly</option>
+              <option value="note">note</option>
+            </select>
           </div>
         </div>
 
@@ -192,11 +196,14 @@ export default function Editor({ slug, initialContent }: Props) {
               Source
             </label>
 
-            <input
+            <select
               value={source}
               onChange={(e) => setSource(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
-            />
+              className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-100"
+            >
+              <option value="ai">ai</option>
+              <option value="manual">manual</option>
+            </select>
           </div>
 
           <div>
@@ -244,7 +251,8 @@ export default function Editor({ slug, initialContent }: Props) {
       </section>
 
       <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-600">
-        保存すると下書きに反映され、公開すると published にコピーして静的サイト生成を起動します。
+        保存すると下書きに反映され、公開すると published
+        にコピーして静的サイト生成を起動します。
       </div>
     </div>
   );

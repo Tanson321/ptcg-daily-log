@@ -22,8 +22,27 @@ function parseTags(lines: string[]) {
   return lines
     .map((line) => line.trim())
     .filter((line) => line.startsWith("- "))
-    .map((line) => line.replace(/^-\s*/, "").trim())
+    .map((line) => parseYamlScalar(line.replace(/^-\s*/, "").trim()))
     .filter(Boolean);
+}
+
+function parseYamlScalar(value: string) {
+  const trimmed = value.trim();
+
+  if (!trimmed) return "";
+
+  try {
+    if (
+      (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+      (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    ) {
+      return JSON.parse(trimmed);
+    }
+  } catch {
+    return trimmed.slice(1, -1);
+  }
+
+  return trimmed;
 }
 
 function parseFrontmatter(frontmatter: string) {
@@ -34,31 +53,38 @@ function parseFrontmatter(frontmatter: string) {
     const line = lines[index];
 
     if (line.startsWith("title:")) {
-      post.title = line.replace(/^title:\s*/, "").trim();
+      post.title = parseYamlScalar(line.replace(/^title:\s*/, ""));
       continue;
     }
 
     if (line.startsWith("date:")) {
-      post.date = line.replace(/^date:\s*/, "").trim();
+      post.date = parseYamlScalar(line.replace(/^date:\s*/, ""));
       continue;
     }
 
     if (line.startsWith("type:")) {
-      post.type = line.replace(/^type:\s*/, "").trim();
+      post.type = parseYamlScalar(line.replace(/^type:\s*/, ""));
       continue;
     }
 
     if (line.startsWith("source:")) {
-      post.source = line.replace(/^source:\s*/, "").trim();
+      post.source = parseYamlScalar(line.replace(/^source:\s*/, ""));
       continue;
     }
 
     if (line.startsWith("summary:")) {
-      post.summary = line.replace(/^summary:\s*/, "").trim();
+      post.summary = parseYamlScalar(line.replace(/^summary:\s*/, ""));
       continue;
     }
 
     if (line.startsWith("tags:")) {
+      const inlineTags = line.replace(/^tags:\s*/, "").trim();
+
+      if (inlineTags === "[]") {
+        post.tags = [];
+        continue;
+      }
+
       const tagLines: string[] = [];
 
       for (let tagIndex = index + 1; tagIndex < lines.length; tagIndex++) {
@@ -111,7 +137,14 @@ export function parseMarkdownPost(markdown: string): MarkdownPost {
 function escapeYamlValue(value: string) {
   if (!value) return "";
 
-  if (value.includes(":") || value.includes("#") || value.includes("\n")) {
+  if (
+    value.includes(":") ||
+    value.includes("#") ||
+    value.includes("\n") ||
+    value.startsWith("[") ||
+    value.startsWith("{") ||
+    value !== value.trim()
+  ) {
     return JSON.stringify(value);
   }
 
@@ -131,8 +164,7 @@ export function serializeMarkdownPost(post: MarkdownPost) {
     `date: ${escapeYamlValue(post.date)}`,
     `type: ${escapeYamlValue(post.type)}`,
     `source: ${escapeYamlValue(post.source)}`,
-    "tags:",
-    tags || "  - ",
+    tags ? `tags:\n${tags}` : "tags: []",
     `summary: ${escapeYamlValue(post.summary)}`,
     "---",
   ].join("\n");

@@ -52,6 +52,19 @@ function parsePost(markdown, fallback) {
   };
 }
 
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function stripLeadingHeading(markdown) {
+  return markdown.trimStart().replace(/^#\s+[^\n]*(?:\r?\n)+/, "");
+}
+
 function formatDisplayDate(date) {
   if (!date) return "";
 
@@ -74,6 +87,26 @@ function getSourceLabel(source) {
   return source;
 }
 
+function getTypeLabel(type) {
+  if (type === "daily") return "daily";
+  if (type === "weekly") return "weekly";
+  if (type === "note") return "note";
+  return type;
+}
+
+function renderTagChips(tags, size = "sm") {
+  if (tags.length === 0) return "";
+
+  const sizeClass = size === "xs" ? "px-2.5 py-1 text-xs" : "px-3 py-1 text-sm";
+
+  return tags
+    .map(
+      (tag) =>
+        `<span class="rounded-md bg-zinc-100 ${sizeClass} text-zinc-600">#${escapeHtml(tag)}</span>`,
+    )
+    .join("\n");
+}
+
 function createLayout({ title, content }) {
   return `
 <!doctype html>
@@ -86,7 +119,7 @@ function createLayout({ title, content }) {
     content="width=device-width, initial-scale=1.0"
   />
 
-  <title>${title}</title>
+  <title>${escapeHtml(title)}</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -175,7 +208,9 @@ async function buildPosts(files) {
     const markdown = await fs.readFile(src, "utf-8");
     const post = parsePost(markdown, file);
 
-    const html = marked.parse(post.content);
+    const html = marked.parse(stripLeadingHeading(post.content));
+    const displayDate = formatDisplayDate(post.date);
+    const tagChips = renderTagChips(post.tags);
 
     const page = createLayout({
       title: post.title,
@@ -188,23 +223,24 @@ async function buildPosts(files) {
         </a>
 
         <header class="mt-8 border-b border-zinc-200 pb-8">
-          <div class="flex flex-wrap items-center gap-2 text-sm text-zinc-500">
-            <span>${formatDisplayDate(post.date)}</span>
+          <h1 class="text-4xl font-black tracking-tight">
+            ${escapeHtml(post.title)}
+          </h1>
+
+          <div class="mt-4 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
+            <span>${escapeHtml(displayDate)}</span>
             <span>•</span>
-            <span>${post.type}</span>
+            <span>${escapeHtml(getTypeLabel(post.type))}</span>
+            <span>•</span>
+            <span>${escapeHtml(getSourceLabel(post.source))}</span>
           </div>
 
-          ${post.summary ? `<p class="mt-4 text-lg leading-8 text-zinc-600">${post.summary}</p>` : ""}
+          ${post.summary ? `<p class="mt-4 text-lg leading-8 text-zinc-600">${escapeHtml(post.summary)}</p>` : ""}
 
           ${
             post.tags.length > 0
               ? `<div class="mt-5 flex flex-wrap gap-2">
-                  ${post.tags
-                    .map(
-                      (tag) =>
-                        `<span class="rounded-full bg-zinc-100 px-3 py-1 text-sm text-zinc-600">#${tag}</span>`,
-                    )
-                    .join("\n")}
+                  ${tagChips}
                 </div>`
               : ""
           }
@@ -243,35 +279,37 @@ async function buildIndex(files) {
 
   const links = posts
     .map((post) => {
+      const displayDate = formatDisplayDate(post.date);
+      const tagChips = renderTagChips(post.tags, "xs");
+
       return `
         <a
           href="./posts/${post.htmlFile}"
-          class="block rounded-2xl border border-zinc-200 bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg"
+          class="block rounded-lg border border-zinc-200 bg-white p-6 transition hover:-translate-y-1 hover:shadow-lg"
         >
-        <div class="mb-6 inline-flex rounded-full bg-indigo-600 px-3 py-1 text-sm font-bold text-white">
-  ${getSourceLabel(post.source)}
-        </div>
+          <div class="mb-5 flex flex-wrap gap-2">
+            <span class="rounded-md bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-800">
+              ${escapeHtml(getTypeLabel(post.type))}
+            </span>
+            <span class="rounded-md bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-800">
+              ${escapeHtml(getSourceLabel(post.source))}
+            </span>
+          </div>
+
           <div class="text-lg font-semibold">
-            ${post.title}
+            ${escapeHtml(post.title)}
           </div>
 
           <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-500">
-            <span>${formatDisplayDate(post.date)}</span>
-            <span>•</span>
-            <span>${post.type}</span>
+            <span>${escapeHtml(displayDate)}</span>
           </div>
 
-          ${post.summary ? `<p class="mt-4 text-sm leading-6 text-zinc-600">${post.summary}</p>` : ""}
+          ${post.summary ? `<p class="mt-4 text-sm leading-6 text-zinc-600">${escapeHtml(post.summary)}</p>` : ""}
 
           ${
             post.tags.length > 0
               ? `<div class="mt-4 flex flex-wrap gap-2">
-                  ${post.tags
-                    .map(
-                      (tag) =>
-                        `<span class="rounded-full bg-zinc-100 px-2.5 py-1 text-xs text-zinc-600">#${tag}</span>`,
-                    )
-                    .join("\n")}
+                  ${tagChips}
                 </div>`
               : ""
           }
