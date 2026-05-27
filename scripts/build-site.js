@@ -6,6 +6,7 @@ import matter from "gray-matter";
 const POSTS_DIR = "published";
 const SITE_DIR = "docs";
 const SITE_POSTS_DIR = path.join(SITE_DIR, "posts");
+const SITE_URL = "https://tanson321.github.io/ptcg-daily-log";
 
 async function ensureDir(dir) {
   await fs.mkdir(dir, { recursive: true });
@@ -115,7 +116,21 @@ function renderPrimaryImage(src, alt, classes) {
   return `<img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" class="${classes}" loading="lazy" />`;
 }
 
-function createLayout({ title, content }) {
+function createLayout({
+  title,
+  content,
+  description = "",
+  url = SITE_URL,
+  type = "website",
+  image = "",
+}) {
+  const metaDescription = description || title;
+  const imageTags = image
+    ? `
+  <meta property="og:image" content="${escapeHtml(image)}" />
+  <meta name="twitter:image" content="${escapeHtml(image)}" />`
+    : "";
+
   return `
 <!doctype html>
 <html lang="ja">
@@ -128,6 +143,14 @@ function createLayout({ title, content }) {
   />
 
   <title>${escapeHtml(title)}</title>
+  <meta name="description" content="${escapeHtml(metaDescription)}" />
+  <meta property="og:title" content="${escapeHtml(title)}" />
+  <meta property="og:description" content="${escapeHtml(metaDescription)}" />
+  <meta property="og:type" content="${escapeHtml(type)}" />
+  <meta property="og:url" content="${escapeHtml(url)}" />
+  <meta name="twitter:card" content="${image ? "summary_large_image" : "summary"}" />
+  <meta name="twitter:title" content="${escapeHtml(title)}" />
+  <meta name="twitter:description" content="${escapeHtml(metaDescription)}" />${imageTags}
 
   <script src="https://cdn.tailwindcss.com"></script>
 
@@ -227,6 +250,10 @@ async function buildPosts(files) {
 
     const page = createLayout({
       title: post.title,
+      description: post.summary,
+      type: "article",
+      url: `${SITE_URL}/posts/${file.replace(/\.md$/, ".html")}`,
+      image: post.primaryImage,
       content: `
         <a
           href="../index.html"
@@ -342,6 +369,9 @@ async function buildIndex(files) {
 
   const page = createLayout({
     title: "LUKA-PTCG-NOTES",
+    description:
+      "Discord上でメモした思考・議論・仮説を、AIが整理し、公開可能な形へ編集したログ。",
+    url: SITE_URL,
     content: `
       <header>
         <div class="text-sm uppercase tracking-widest text-zinc-500">
