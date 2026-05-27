@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getGitHubFile, putGitHubFileBase64 } from "@/lib/github";
-
-const owner = process.env.GITHUB_OWNER;
-const repo = process.env.GITHUB_REPO;
-const branch = process.env.GITHUB_BRANCH || "main";
+import { put } from "@vercel/blob";
 
 const EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
@@ -21,13 +17,14 @@ function safeBaseName(value: string) {
     .toLowerCase();
 }
 
-function rawUrlFor(path: string) {
-  if (!owner || !repo) return "";
-
-  return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
-}
-
 export async function POST(request: NextRequest) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    return NextResponse.json(
+      { error: "BLOB_READ_WRITE_TOKEN is required" },
+      { status: 500 },
+    );
+  }
+
   const formData = await request.formData();
   const file = formData.get("file");
   const slug = formData.get("slug");
@@ -55,29 +52,16 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const filename = `${safeBaseName(slug) || "deck"}-${Date.now()}.${extension}`;
-  const path = `docs/assets/decks/${filename}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  let sha: string | undefined;
-
-  try {
-    const current = await getGitHubFile(path);
-    sha = current.sha;
-  } catch {
-    sha = undefined;
-  }
-
-  await putGitHubFileBase64({
-    path,
-    encodedContent: buffer.toString("base64"),
-    sha,
-    message: `upload deck image ${filename}`,
+  const filename = `${Date.now()}.${extension}`;
+  const pathname = `assets/images/${safeBaseName(slug) || "post"}/${filename}`;
+  const blob = await put(pathname, file, {
+    access: "public",
+    addRandomSuffix: false,
   });
 
   return NextResponse.json({
     ok: true,
-    path,
-    primaryImage: rawUrlFor(path),
+    path: blob.pathname,
+    primaryImage: blob.url,
   });
 }
