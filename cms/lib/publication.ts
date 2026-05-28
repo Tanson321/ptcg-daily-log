@@ -113,6 +113,7 @@ export async function publishPostToBlob({
   const blob = await put(path, markdown, {
     access: "public",
     addRandomSuffix: false,
+    allowOverwrite: true,
     contentType: "text/markdown; charset=utf-8",
   });
 
@@ -155,6 +156,7 @@ async function putPublishedIndex(posts: PublishedPostIndexItem[]) {
     {
       access: "public",
       addRandomSuffix: false,
+      allowOverwrite: true,
       contentType: "application/json; charset=utf-8",
     },
   );
