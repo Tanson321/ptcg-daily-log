@@ -122,6 +122,62 @@ export async function publishPostToBlob({
   };
 }
 
+async function loadPublishedIndex() {
+  try {
+    const { blobs } = await list({
+      prefix: PUBLISHED_INDEX_PATH,
+      limit: 1,
+    });
+    const indexBlob = blobs.find(
+      (blob) => blob.pathname === PUBLISHED_INDEX_PATH,
+    );
+
+    if (!indexBlob) return [];
+
+    const text = await fetchBlobText(indexBlob.url);
+    const parsed = JSON.parse(text);
+
+    return Array.isArray(parsed) ? (parsed as PublishedPostIndexItem[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function putPublishedIndex(posts: PublishedPostIndexItem[]) {
+  const sortedPosts = posts.sort((a, b) => {
+    if (a.date !== b.date) return b.date.localeCompare(a.date);
+    return b.slug.localeCompare(a.slug);
+  });
+
+  const indexBlob = await put(
+    PUBLISHED_INDEX_PATH,
+    JSON.stringify(sortedPosts, null, 2),
+    {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: "application/json; charset=utf-8",
+    },
+  );
+
+  return {
+    posts: sortedPosts,
+    path: indexBlob.pathname,
+    url: indexBlob.url,
+  };
+}
+
+export async function upsertPublishedIndexItem(item: PublishedPostIndexItem) {
+  if (!process.env.BLOB_READ_WRITE_TOKEN) {
+    throw new Error("BLOB_READ_WRITE_TOKEN is required");
+  }
+
+  const posts = await loadPublishedIndex();
+  const nextPosts = posts.filter((post) => post.slug !== item.slug);
+  nextPosts.push(item);
+
+  return await putPublishedIndex(nextPosts);
+}
+
 export async function rebuildPublishedIndex() {
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     throw new Error("BLOB_READ_WRITE_TOKEN is required");
@@ -148,24 +204,5 @@ export async function rebuildPublishedIndex() {
       }),
   );
 
-  const sortedPosts = posts.sort((a, b) => {
-    if (a.date !== b.date) return b.date.localeCompare(a.date);
-    return b.slug.localeCompare(a.slug);
-  });
-
-  const indexBlob = await put(
-    PUBLISHED_INDEX_PATH,
-    JSON.stringify(sortedPosts, null, 2),
-    {
-      access: "public",
-      addRandomSuffix: false,
-      contentType: "application/json; charset=utf-8",
-    },
-  );
-
-  return {
-    posts: sortedPosts,
-    path: indexBlob.pathname,
-    url: indexBlob.url,
-  };
+  return await putPublishedIndex(posts);
 }

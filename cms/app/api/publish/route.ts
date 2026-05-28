@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { dispatchWorkflow, getGitHubFile, putGitHubFile } from "@/lib/github";
-import { publishPostToBlob, rebuildPublishedIndex } from "@/lib/publication";
+import {
+  createPublishedPostIndexItem,
+  publishPostToBlob,
+  upsertPublishedIndexItem,
+} from "@/lib/publication";
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -35,11 +39,25 @@ export async function POST(request: NextRequest) {
     slug,
     markdown: draft.content,
   });
-  const blobIndex = await rebuildPublishedIndex();
+  const blobIndex = await upsertPublishedIndexItem(
+    createPublishedPostIndexItem({
+      slug,
+      path: blobPost.path,
+      url: blobPost.url,
+      markdown: draft.content,
+    }),
+  );
 
-  await dispatchWorkflow({
-    workflowId: "publish-pages.yml",
-  });
+  let pagesWorkflowDispatched = true;
+
+  try {
+    await dispatchWorkflow({
+      workflowId: "publish-pages.yml",
+    });
+  } catch (error) {
+    pagesWorkflowDispatched = false;
+    console.error(error);
+  }
 
   return NextResponse.json({
     ok: true,
@@ -52,5 +70,6 @@ export async function POST(request: NextRequest) {
         count: blobIndex.posts.length,
       },
     },
+    pagesWorkflowDispatched,
   });
 }
