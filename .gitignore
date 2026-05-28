@@ -6,3 +6,7 @@ node_modules
 cms/.next
 cms/node_modules
 cms/.env.local
+
+public-site/.next
+public-site/node_modules
+public-site/.env.local
