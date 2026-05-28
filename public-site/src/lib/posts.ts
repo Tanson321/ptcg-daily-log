@@ -28,10 +28,17 @@ const DEFAULT_INDEX_URL =
   "https://natqs7wrjzhu2j1s.public.blob.vercel-storage.com/published/index.json";
 
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://ptcg-daily-log-public.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  "https://ptcg-daily-log-public.vercel.app";
 
-function getIndexUrl() {
-  return process.env.NEXT_PUBLIC_PUBLISHED_INDEX_URL || DEFAULT_INDEX_URL;
+function getIndexUrls() {
+  const configuredUrl = process.env.NEXT_PUBLIC_PUBLISHED_INDEX_URL;
+
+  if (!configuredUrl || configuredUrl === DEFAULT_INDEX_URL) {
+    return [DEFAULT_INDEX_URL];
+  }
+
+  return [configuredUrl, DEFAULT_INDEX_URL];
 }
 
 export function postHref(slug: string) {
@@ -39,22 +46,34 @@ export function postHref(slug: string) {
 }
 
 export async function getPosts() {
-  const res = await fetch(getIndexUrl(), {
-    next: {
-      revalidate: 60,
-    },
-  });
+  let lastError: unknown;
 
-  if (!res.ok) {
-    throw new Error(`Failed to fetch published index: ${res.status}`);
+  for (const url of getIndexUrls()) {
+    try {
+      const res = await fetch(url, {
+        next: {
+          revalidate: 60,
+        },
+      });
+
+      if (!res.ok) {
+        throw new Error(`Failed to fetch published index: ${res.status}`);
+      }
+
+      const posts = (await res.json()) as PublishedPost[];
+
+      return posts.sort((a, b) => {
+        if (a.date !== b.date) return b.date.localeCompare(a.date);
+        return b.slug.localeCompare(a.slug);
+      });
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  const posts = (await res.json()) as PublishedPost[];
+  console.error(lastError);
 
-  return posts.sort((a, b) => {
-    if (a.date !== b.date) return b.date.localeCompare(a.date);
-    return b.slug.localeCompare(a.slug);
-  });
+  return [];
 }
 
 export async function getPost(slugWithoutExtension: string) {
