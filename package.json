@@ -9,9 +9,13 @@
     "channels": "node scripts/list-channels.js",
     "fetch:today": "node scripts/fetch-today.js --range=today",
     "fetch:week": "node scripts/fetch-today.js --range=week",
+    "fetch:date": "node scripts/fetch-today.js --range=date",
+    "fetch:period": "node scripts/fetch-today.js --range=period",
     "generate": "npm run generate:today",
     "generate:today": "node scripts/generate-post.js --range=today",
     "generate:week": "node scripts/generate-post.js --range=week",
+    "generate:date": "node scripts/generate-post.js --range=date",
+    "generate:period": "node scripts/generate-post.js --range=period",
     "build:today": "npm run fetch:today && npm run generate:today",
     "build:week": "npm run fetch:week && npm run generate:week",
     "site": "node scripts/build-site.js"

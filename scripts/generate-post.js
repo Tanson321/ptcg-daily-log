@@ -15,6 +15,20 @@ function getArgValue(name, defaultValue) {
   return arg ? arg.slice(prefix.length) : defaultValue;
 }
 
+function parseDateValue(value, name) {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    throw new Error(`--${name} は YYYY-MM-DD 形式で指定してください`);
+  }
+
+  const date = new Date(`${value}T00:00:00+09:00`);
+
+  if (Number.isNaN(date.getTime()) || formatDateInTokyo(date) !== value) {
+    throw new Error(`--${name} に正しい日付を指定してください`);
+  }
+
+  return date;
+}
+
 function formatDateInTokyo(date) {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TIME_ZONE,
@@ -59,7 +73,26 @@ function addDays(date, days) {
   return next;
 }
 
-function getTargetLogPath(range) {
+function getWeekRange(targetStart) {
+  const parts = getTokyoDateParts(targetStart);
+  const weekdayIndexMap = {
+    Mon: 0,
+    Tue: 1,
+    Wed: 2,
+    Thu: 3,
+    Fri: 4,
+    Sat: 5,
+    Sun: 6,
+  };
+
+  const daysFromMonday = weekdayIndexMap[parts.weekday] ?? 0;
+  const weekStart = addDays(targetStart, -daysFromMonday);
+  const weekEnd = addDays(weekStart, 7);
+
+  return { weekStart, weekEnd };
+}
+
+function getTargetLogPath(range, { dateValue, startDateValue, endDateValue }) {
   const now = new Date();
   const todayParts = getTokyoDateParts(now);
   const todayStart = toTokyoStartOfDayUtcDate(todayParts);
@@ -68,24 +101,30 @@ function getTargetLogPath(range) {
     return `logs/${formatDateInTokyo(todayStart)}.md`;
   }
 
-  if (range === "week") {
-    const weekdayIndexMap = {
-      Mon: 0,
-      Tue: 1,
-      Wed: 2,
-      Thu: 3,
-      Fri: 4,
-      Sat: 5,
-      Sun: 6,
-    };
+  if (range === "date") {
+    const targetStart = parseDateValue(dateValue, "date");
+    return `logs/${formatDateInTokyo(targetStart)}.md`;
+  }
 
-    const daysFromMonday = weekdayIndexMap[todayParts.weekday] ?? 0;
-    const weekStart = addDays(todayStart, -daysFromMonday);
+  if (range === "week") {
+    const targetStart = dateValue ? parseDateValue(dateValue, "date") : todayStart;
+    const { weekStart } = getWeekRange(targetStart);
 
     return `logs/${formatDateInTokyo(weekStart)}-week.md`;
   }
 
-  throw new Error("--range は today または week を指定してください");
+  if (range === "period") {
+    const periodStart = parseDateValue(startDateValue, "start-date");
+    const periodEnd = parseDateValue(endDateValue, "end-date");
+
+    if (periodEnd < periodStart) {
+      throw new Error("--end-date は --start-date 以降の日付を指定してください");
+    }
+
+    return `logs/${formatDateInTokyo(periodStart)}_to_${formatDateInTokyo(periodEnd)}.md`;
+  }
+
+  throw new Error("--range は today, date, week, period のいずれかを指定してください");
 }
 
 function createPostPath(logPath) {
@@ -101,7 +140,8 @@ function getPostDateFromLogPath(logPath) {
 
 function getPostType(range) {
   if (range === "week") return "weekly";
-  if (range === "today") return "daily";
+  if (range === "today" || range === "date") return "daily";
+  if (range === "period") return "period";
   return range;
 }
 
@@ -147,7 +187,11 @@ async function generateWithRetry(prompt, maxRetries = 3) {
 }
 
 const range = getArgValue("range", "today");
-const logPath = getTargetLogPath(range);
+const logPath = getTargetLogPath(range, {
+  dateValue: getArgValue("date", ""),
+  startDateValue: getArgValue("start-date", ""),
+  endDateValue: getArgValue("end-date", ""),
+});
 
 console.log(`using log: ${logPath}`);
 

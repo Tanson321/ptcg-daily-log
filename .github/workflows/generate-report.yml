@@ -4,13 +4,27 @@ on:
   workflow_dispatch:
     inputs:
       range:
-        description: "today or week"
+        description: "today, date, week, or period"
         required: true
         default: "today"
         type: choice
         options:
           - today
+          - date
           - week
+          - period
+      date:
+        description: "YYYY-MM-DD. Used by date and week. Week uses the Monday-Sunday week containing this date."
+        required: false
+        type: string
+      start_date:
+        description: "YYYY-MM-DD. Used by period."
+        required: false
+        type: string
+      end_date:
+        description: "YYYY-MM-DD. Used by period."
+        required: false
+        type: string
 
   schedule:
     # 毎週日曜 23:50 JST = 日曜 14:50 UTC
@@ -46,7 +60,11 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then
             npm run fetch:week
           else
-            npm run fetch:${{ github.event.inputs.range }}
+            node scripts/fetch-today.js \
+              --range="${{ github.event.inputs.range }}" \
+              --date="${{ github.event.inputs.date }}" \
+              --start-date="${{ github.event.inputs.start_date }}" \
+              --end-date="${{ github.event.inputs.end_date }}"
           fi
 
       - name: Generate post
@@ -54,7 +72,11 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then
             npm run generate:week
           else
-            npm run generate:${{ github.event.inputs.range }}
+            node scripts/generate-post.js \
+              --range="${{ github.event.inputs.range }}" \
+              --date="${{ github.event.inputs.date }}" \
+              --start-date="${{ github.event.inputs.start_date }}" \
+              --end-date="${{ github.event.inputs.end_date }}"
           fi
 
       - name: Commit generated files
@@ -74,17 +96,7 @@ jobs:
       - name: Notify Discord
         if: success()
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            RANGE="week"
-          else
-            RANGE="${{ github.event.inputs.range }}"
-          fi
-
-          if [ "$RANGE" = "week" ]; then
-            FILE="$(ls -t posts/*-week.md | head -n 1)"
-          else
-            FILE="$(ls -t posts/*.md | grep -v -- '-week.md' | head -n 1)"
-          fi
+          FILE="$(ls -t posts/*.md | head -n 1)"
 
           FILENAME="$(basename "$FILE")"
           CMS_URL="http://ptcg-daily-log.vercel.app/posts/$FILENAME"

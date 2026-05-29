@@ -218,6 +218,7 @@ export default function Editor({ slug, initialContent }: Props) {
             >
               <option value="daily">daily</option>
               <option value="weekly">weekly</option>
+              <option value="period">period</option>
               <option value="note">note</option>
             </select>
           </div>

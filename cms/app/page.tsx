@@ -46,6 +46,7 @@ export default async function Home() {
   const drafts = await getDrafts();
   const dailyCount = drafts.filter((draft) => draft.type === "daily").length;
   const weeklyCount = drafts.filter((draft) => draft.type === "weekly").length;
+  const periodCount = drafts.filter((draft) => draft.type === "period").length;
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col px-5 py-8 sm:px-8">
@@ -80,6 +81,12 @@ export default async function Home() {
               <div className="text-xs text-zinc-500">Weekly</div>
               <div className="mt-1 font-mono text-xl font-semibold">
                 {weeklyCount}
+              </div>
+            </div>
+            <div className="rounded-lg border border-zinc-200 bg-white px-4 py-3">
+              <div className="text-xs text-zinc-500">Period</div>
+              <div className="mt-1 font-mono text-xl font-semibold">
+                {periodCount}
               </div>
             </div>
           </div>
