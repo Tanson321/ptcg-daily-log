@@ -5,13 +5,16 @@ import {
   type PublishedPost,
 } from "@/lib/posts";
 
+const MAX_VISIBLE_TAGS = 5;
+const MAX_VISIBLE_MONTHS = 6;
+
 export default function ArchiveSidebar({ posts }: { posts: PublishedPost[] }) {
-  const months = getArchiveMonths(posts);
-  const tags = getTagCounts(posts);
+  const months = getArchiveMonths(posts).slice(0, MAX_VISIBLE_MONTHS);
+  const tags = getTagCounts(posts).slice(0, MAX_VISIBLE_TAGS);
 
   return (
-    <aside className="space-y-8 border-zinc-200 lg:sticky lg:top-8 lg:border-r lg:pr-8">
-      <section>
+    <aside className="space-y-8 text-sm lg:sticky lg:top-8 lg:self-start">
+      <section className="border-t border-zinc-200 pt-5">
         <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
           Archive
         </h2>
@@ -33,22 +36,27 @@ export default function ArchiveSidebar({ posts }: { posts: PublishedPost[] }) {
         </nav>
       </section>
 
-      <section>
-        <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
-          Tags
-        </h2>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {tags.map(({ tag, count }) => (
-            <Link
-              key={tag}
-              href={`/?tag=${encodeURIComponent(tag)}`}
-              className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs text-zinc-700 transition hover:bg-zinc-200"
-            >
-              #{tag} <span className="text-zinc-400">{count}</span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      {tags.length > 0 ? (
+        <section className="border-t border-zinc-200 pt-5">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
+            Popular tags
+          </h2>
+          <div className="mt-3 grid gap-1">
+            {tags.map(({ tag, count }) => (
+              <Link
+                key={tag}
+                href={`/?tag=${encodeURIComponent(tag)}`}
+                className="flex items-center justify-between rounded-md px-2 py-1.5 text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-950"
+              >
+                <span className="truncate">#{tag}</span>
+                <span className="ml-3 font-mono text-xs text-zinc-400">
+                  {count}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </aside>
   );
 }

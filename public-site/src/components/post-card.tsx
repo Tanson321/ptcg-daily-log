@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { postHref, type PublishedPost } from "@/lib/posts";
 
+const MAX_VISIBLE_TAGS = 5;
+
 export default function PostCard({ post }: { post: PublishedPost }) {
   return (
     <article className="rounded-lg border border-zinc-200 bg-white p-5 transition hover:border-cyan-300 hover:shadow-sm">
@@ -36,10 +38,10 @@ export default function PostCard({ post }: { post: PublishedPost }) {
 
         {post.tags.length > 0 ? (
           <div className="mt-4 flex flex-wrap gap-2">
-            {post.tags.slice(0, 8).map((tag) => (
+            {post.tags.slice(0, MAX_VISIBLE_TAGS).map((tag) => (
               <span
                 key={tag}
-                className="rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-600"
+                className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs text-zinc-600"
               >
                 #{tag}
               </span>

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPost, getPosts, postHref, SITE_URL } from "@/lib/posts";
 
+const MAX_VISIBLE_TAGS = 5;
+
 type Props = {
   params: Promise<{
     slug: string;
@@ -95,11 +97,11 @@ export default async function PostPage({ params }: Props) {
 
           {post.tags.length > 0 ? (
             <div className="mt-5 flex flex-wrap gap-2">
-              {post.tags.map((tag) => (
+              {post.tags.slice(0, MAX_VISIBLE_TAGS).map((tag) => (
                 <Link
                   key={tag}
                   href={`/?tag=${encodeURIComponent(tag)}`}
-                  className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs text-zinc-700 transition hover:bg-zinc-200"
+                  className="rounded-full bg-zinc-100 px-2.5 py-1 text-xs text-zinc-700 transition hover:bg-zinc-200"
                 >
                   #{tag}
                 </Link>
