@@ -187,19 +187,66 @@ jobs:
         env:
           POST_FILES: ${{ steps.commit.outputs.post_files }}
         run: |
-          message="🧠 下書きが生成されたよ\n\n"
+          payload="$(
+            POST_FILES="$POST_FILES" node <<'NODE'
+          const files = (process.env.POST_FILES ?? "")
+            .split(/\r?\n/)
+            .map((file) => file.trim())
+            .filter(Boolean);
 
-          while IFS= read -r FILE; do
-            if [ -z "$FILE" ]; then
-              continue
-            fi
+          const formatter = new Intl.DateTimeFormat("en-CA", {
+            timeZone: "Asia/Tokyo",
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          });
 
-            FILENAME="$(basename "$FILE")"
-            CMS_URL="https://ptcg-daily-log.vercel.app/posts/$FILENAME"
-            message="${message}対象: $FILENAME\n編集: $CMS_URL\n\n"
-          done <<< "$POST_FILES"
+          function addDays(date, days) {
+            const next = new Date(date);
+            next.setUTCDate(next.getUTCDate() + days);
+            return next;
+          }
 
-          payload="$(MESSAGE="$message" node -e 'process.stdout.write(JSON.stringify({ content: process.env.MESSAGE }))')"
+          function periodLabel(filename) {
+            const weekly = filename.match(/^(\d{4}-\d{2}-\d{2})-week\.md$/);
+
+            if (weekly) {
+              const start = new Date(`${weekly[1]}T00:00:00+09:00`);
+              return `${formatter.format(start)}〜${formatter.format(addDays(start, 6))}`;
+            }
+
+            const period = filename.match(
+              /^(\d{4}-\d{2}-\d{2})_to_(\d{4}-\d{2}-\d{2})\.md$/,
+            );
+
+            if (period) {
+              return `${period[1]}〜${period[2]}`;
+            }
+
+            const daily = filename.match(/^(\d{4}-\d{2}-\d{2})\.md$/);
+
+            return daily ? daily[1] : "";
+          }
+
+          const lines = ["🧠 下書きが生成されたよ", ""];
+
+          for (const file of files) {
+            const filename = file.split("/").pop();
+            const cmsUrl = `https://ptcg-daily-log.vercel.app/posts/${filename}`;
+            const period = periodLabel(filename);
+
+            lines.push(`対象: ${filename}`);
+
+            if (period) {
+              lines.push(`範囲: ${period}`);
+            }
+
+            lines.push(`編集: ${cmsUrl}`, "");
+          }
+
+          process.stdout.write(JSON.stringify({ content: lines.join("\n") }));
+          NODE
+          )"
 
           curl -H "Content-Type: application/json" \
             -d "$payload" \
