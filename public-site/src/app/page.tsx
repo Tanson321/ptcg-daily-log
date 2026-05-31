@@ -155,7 +155,7 @@ export default async function Home({ searchParams }: Props) {
             </div>
           ) : null}
 
-          <section id="latest" className="grid gap-4 scroll-mt-24">
+          <section id="latest" className="space-y-3 scroll-mt-24">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h2 className="text-base font-semibold text-zinc-950">
@@ -173,9 +173,11 @@ export default async function Home({ searchParams }: Props) {
             </div>
 
             {filteredPosts.length > 0 ? (
-              paginatedPosts.map((post) => (
-                <PostCard key={post.slug} post={post} />
-              ))
+              <div className="overflow-hidden rounded-lg border border-zinc-200 bg-white sm:grid sm:gap-4 sm:overflow-visible sm:rounded-none sm:border-0 sm:bg-transparent">
+                {paginatedPosts.map((post) => (
+                  <PostCard key={post.slug} post={post} />
+                ))}
+              </div>
             ) : (
               <div className="rounded-lg border border-dashed border-zinc-300 bg-white px-5 py-10 text-center">
                 <p className="text-sm text-zinc-500">記事がありません。</p>
