@@ -10,3 +10,6 @@ cms/.env.local
 public-site/.next
 public-site/node_modules
 public-site/.env.local
+
+# Local Codex handoff context and agent notes
+.codex/
