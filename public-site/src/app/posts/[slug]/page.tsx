@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { postSourceLabel, postTypeLabel } from "@/lib/post-labels";
 import { getPost, getPosts, postHref, SITE_URL } from "@/lib/posts";
 
 const MAX_VISIBLE_TAGS = 5;
@@ -71,9 +72,9 @@ export default async function PostPage({ params }: Props) {
           <div className="flex flex-wrap items-center gap-2 text-sm text-zinc-500">
             <span className="font-mono">{post.date}</span>
             <span>•</span>
-            <span>{post.type}</span>
+            <span>{postTypeLabel(post.type)}</span>
             <span>•</span>
-            <span>{post.source === "manual" ? "手動" : "AI"}</span>
+            <span>{postSourceLabel(post.source)}</span>
           </div>
 
           <h1 className="mt-4 text-4xl font-semibold tracking-tight text-zinc-950">

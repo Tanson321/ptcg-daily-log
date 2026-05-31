@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { postSourceLabel, postTypeLabel } from "@/lib/post-labels";
 import { postHref, type PublishedPost } from "@/lib/posts";
 
 const MAX_VISIBLE_TAGS = 5;
@@ -10,16 +11,26 @@ type Props = {
   size?: PostCardSize;
 };
 
-function sourceLabel(source: string) {
-  return source === "manual" ? "手動" : "AI";
-}
-
-function typeLabel(type: string) {
-  if (type === "daily") return "daily";
-  if (type === "weekly") return "weekly";
-  if (type === "period") return "period";
-  if (type === "note") return "note";
-  return type;
+function NoImageThumbnail() {
+  return (
+    <div
+      role="img"
+      aria-label="画像なし"
+      className="relative flex h-16 w-[5.75rem] shrink-0 items-center justify-center overflow-hidden rounded-md border border-zinc-200 bg-zinc-100"
+    >
+      <div
+        aria-hidden="true"
+        className="absolute inset-0"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 50% 50%, transparent 0 13px, rgba(113,113,122,0.5) 14px 17px, transparent 18px), linear-gradient(to bottom, transparent calc(50% - 1px), rgba(113,113,122,0.42) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)), radial-gradient(circle at 50% 50%, rgba(113,113,122,0.18) 0 36px, transparent 37px), linear-gradient(135deg, #fafafa, #e4e4e7)",
+        }}
+      />
+      <span className="relative z-10 rounded bg-white/75 px-1.5 py-0.5 text-[9px] font-semibold leading-none tracking-[0.12em] text-zinc-500">
+        NO IMAGE
+      </span>
+    </div>
+  );
 }
 
 function CompactPostCard({ post }: { post: PublishedPost }) {
@@ -36,8 +47,8 @@ function CompactPostCard({ post }: { post: PublishedPost }) {
 
           <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500">
             <span className="font-mono">{post.date}</span>
-            <span>{typeLabel(post.type)}</span>
-            <span>{sourceLabel(post.source)}</span>
+            <span>{postTypeLabel(post.type)}</span>
+            <span>{postSourceLabel(post.source)}</span>
           </div>
         </div>
 
@@ -49,11 +60,7 @@ function CompactPostCard({ post }: { post: PublishedPost }) {
             className="h-16 w-[5.75rem] rounded-md border border-zinc-200 object-cover"
           />
         ) : (
-          <div className="flex h-16 w-[5.75rem] items-center justify-center rounded-md border border-zinc-200 bg-zinc-50">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
-              {typeLabel(post.type)}
-            </span>
-          </div>
+          <NoImageThumbnail />
         )}
       </Link>
     </article>
@@ -76,10 +83,10 @@ function ComfortablePostCard({ post }: { post: PublishedPost }) {
         <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
           <span className="font-mono">{post.date}</span>
           <span className="rounded-md bg-cyan-50 px-2 py-0.5 font-medium text-cyan-800">
-            {typeLabel(post.type)}
+            {postTypeLabel(post.type)}
           </span>
           <span className="rounded-md bg-amber-50 px-2 py-0.5 font-medium text-amber-800">
-            {sourceLabel(post.source)}
+            {postSourceLabel(post.source)}
           </span>
         </div>
 
