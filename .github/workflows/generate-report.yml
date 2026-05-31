@@ -27,8 +27,9 @@ on:
         type: string
 
   schedule:
-    # 毎週日曜 23:50 JST = 日曜 14:50 UTC
-    - cron: "50 14 * * 0"
+    # 毎日 23:50 JST = 14:50 UTC
+    # 日曜は同じ実行で日次と週次の両方を下書き化する
+    - cron: "50 14 * * *"
 
 jobs:
   generate:
@@ -55,52 +56,151 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Fetch Discord logs
+      - name: Resolve generation targets
+        id: targets
+        shell: bash
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then
-            npm run fetch:week
+            # GitHub Actions の schedule は遅延することがあるため、
+            # 実行時刻そのものではなく「6時間前のJST日付」を締め対象日にする。
+            target_info="$(node -e '
+              const target = new Date(Date.now() - 6 * 60 * 60 * 1000);
+              const date = new Intl.DateTimeFormat("en-CA", {
+                timeZone: "Asia/Tokyo",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              }).format(target);
+              const weekdayName = new Intl.DateTimeFormat("en-US", {
+                timeZone: "Asia/Tokyo",
+                weekday: "short",
+              }).format(target);
+              const weekdayMap = {
+                Mon: 1,
+                Tue: 2,
+                Wed: 3,
+                Thu: 4,
+                Fri: 5,
+                Sat: 6,
+                Sun: 7,
+              };
+              console.log(`${date} ${weekdayMap[weekdayName]}`);
+            '
+            )"
+            read -r target_date weekday <<< "$target_info"
+            ranges="date"
+
+            if [ "$weekday" = "7" ]; then
+              ranges="${ranges}"$'\n'"week"
+            fi
+
+            {
+              echo "ranges<<EOF"
+              printf '%s\n' "$ranges"
+              echo "EOF"
+              echo "date=$target_date"
+              echo "start_date="
+              echo "end_date="
+            } >> "$GITHUB_OUTPUT"
+
+            echo "target date: $target_date"
+            printf 'target ranges:\n%s\n' "$ranges"
           else
-            node scripts/fetch-today.js \
-              --range="${{ github.event.inputs.range }}" \
-              --date="${{ github.event.inputs.date }}" \
-              --start-date="${{ github.event.inputs.start_date }}" \
-              --end-date="${{ github.event.inputs.end_date }}"
+            {
+              echo "ranges<<EOF"
+              echo "${{ github.event.inputs.range }}"
+              echo "EOF"
+              echo "date=${{ github.event.inputs.date }}"
+              echo "start_date=${{ github.event.inputs.start_date }}"
+              echo "end_date=${{ github.event.inputs.end_date }}"
+            } >> "$GITHUB_OUTPUT"
+
+            echo "manual range: ${{ github.event.inputs.range }}"
           fi
+
+      - name: Fetch Discord logs
+        env:
+          TARGET_RANGES: ${{ steps.targets.outputs.ranges }}
+          TARGET_DATE: ${{ steps.targets.outputs.date }}
+          TARGET_START_DATE: ${{ steps.targets.outputs.start_date }}
+          TARGET_END_DATE: ${{ steps.targets.outputs.end_date }}
+        run: |
+          while IFS= read -r range; do
+            if [ -z "$range" ]; then
+              continue
+            fi
+
+            echo "Fetching Discord logs: range=$range date=$TARGET_DATE start=$TARGET_START_DATE end=$TARGET_END_DATE"
+            node scripts/fetch-today.js \
+              --range="$range" \
+              --date="$TARGET_DATE" \
+              --start-date="$TARGET_START_DATE" \
+              --end-date="$TARGET_END_DATE"
+          done <<< "$TARGET_RANGES"
 
       - name: Generate post
+        env:
+          TARGET_RANGES: ${{ steps.targets.outputs.ranges }}
+          TARGET_DATE: ${{ steps.targets.outputs.date }}
+          TARGET_START_DATE: ${{ steps.targets.outputs.start_date }}
+          TARGET_END_DATE: ${{ steps.targets.outputs.end_date }}
         run: |
-          if [ "${{ github.event_name }}" = "schedule" ]; then
-            npm run generate:week
-          else
+          while IFS= read -r range; do
+            if [ -z "$range" ]; then
+              continue
+            fi
+
+            echo "Generating post: range=$range date=$TARGET_DATE start=$TARGET_START_DATE end=$TARGET_END_DATE"
             node scripts/generate-post.js \
-              --range="${{ github.event.inputs.range }}" \
-              --date="${{ github.event.inputs.date }}" \
-              --start-date="${{ github.event.inputs.start_date }}" \
-              --end-date="${{ github.event.inputs.end_date }}"
-          fi
+              --range="$range" \
+              --date="$TARGET_DATE" \
+              --start-date="$TARGET_START_DATE" \
+              --end-date="$TARGET_END_DATE"
+          done <<< "$TARGET_RANGES"
 
       - name: Commit generated files
+        id: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
           git add logs posts
+          post_files="$(git diff --cached --name-only -- posts || true)"
 
           if git diff --cached --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "No changes to commit"
           else
+            {
+              echo "changed=true"
+              echo "post_files<<EOF"
+              printf '%s\n' "$post_files"
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+
             git commit -m "generate ptcg report"
             git push
           fi
 
       - name: Notify Discord
-        if: success()
+        if: success() && steps.commit.outputs.changed == 'true' && steps.commit.outputs.post_files != ''
+        env:
+          POST_FILES: ${{ steps.commit.outputs.post_files }}
         run: |
-          FILE="$(ls -t posts/*.md | head -n 1)"
+          message="🧠 下書きが生成されたよ\n\n"
 
-          FILENAME="$(basename "$FILE")"
-          CMS_URL="http://ptcg-daily-log.vercel.app/posts/$FILENAME"
+          while IFS= read -r FILE; do
+            if [ -z "$FILE" ]; then
+              continue
+            fi
+
+            FILENAME="$(basename "$FILE")"
+            CMS_URL="https://ptcg-daily-log.vercel.app/posts/$FILENAME"
+            message="${message}対象: $FILENAME\n編集: $CMS_URL\n\n"
+          done <<< "$POST_FILES"
+
+          payload="$(MESSAGE="$message" node -e 'process.stdout.write(JSON.stringify({ content: process.env.MESSAGE }))')"
 
           curl -H "Content-Type: application/json" \
-            -d "{\"content\":\"🧠 下書きが生成されたよ\n\n対象: $FILENAME\n編集: $CMS_URL\"}" \
+            -d "$payload" \
             "${{ secrets.DISCORD_WEBHOOK_URL }}"
