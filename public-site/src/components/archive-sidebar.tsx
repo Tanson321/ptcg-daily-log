@@ -13,7 +13,7 @@ export default function ArchiveSidebar({ posts }: { posts: PublishedPost[] }) {
   const tags = getTagCounts(posts).slice(0, MAX_VISIBLE_TAGS);
 
   return (
-    <aside className="space-y-8 text-sm lg:sticky lg:top-8 lg:self-start">
+    <aside className="space-y-8 text-sm lg:sticky lg:top-24 lg:self-start">
       <section className="border-t border-zinc-200 pt-5">
         <h2 className="text-xs font-semibold uppercase tracking-[0.2em] text-zinc-500">
           Archive

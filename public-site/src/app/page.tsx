@@ -4,16 +4,76 @@ import PostCard from "@/components/post-card";
 import PostSearch from "@/components/post-search";
 import { getPosts } from "@/lib/posts";
 
+const POSTS_PER_PAGE = 5;
+type PaginationItem = number | "start-ellipsis" | "end-ellipsis";
+
 type Props = {
   searchParams: Promise<{
     tag?: string;
     month?: string;
+    page?: string;
   }>;
 };
 
+function parsePage(value: string | undefined) {
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 1) return 1;
+
+  return parsed;
+}
+
+function createPageHref({
+  tag,
+  month,
+  page,
+}: {
+  tag?: string;
+  month?: string;
+  page: number;
+}) {
+  const params = new URLSearchParams();
+
+  if (tag) params.set("tag", tag);
+  if (month) params.set("month", month);
+  if (page > 1) params.set("page", String(page));
+
+  const query = params.toString();
+  return query ? `/?${query}` : "/";
+}
+
+function createPaginationItems(
+  currentPage: number,
+  totalPages: number,
+): PaginationItem[] {
+  if (totalPages <= 7) {
+    return Array.from({ length: totalPages }, (_, index) => index + 1);
+  }
+
+  const items: PaginationItem[] = [1];
+  const start = Math.max(2, currentPage - 1);
+  const end = Math.min(totalPages - 1, currentPage + 1);
+
+  if (start > 2) {
+    items.push("start-ellipsis");
+  }
+
+  for (let pageNumber = start; pageNumber <= end; pageNumber++) {
+    items.push(pageNumber);
+  }
+
+  if (end < totalPages - 1) {
+    items.push("end-ellipsis");
+  }
+
+  items.push(totalPages);
+
+  return items;
+}
+
 export default async function Home({ searchParams }: Props) {
   const posts = await getPosts();
-  const { tag, month } = await searchParams;
+  const { tag, month, page } = await searchParams;
 
   const filteredPosts = posts.filter((post) => {
     if (tag && !post.tags.includes(tag)) return false;
@@ -21,12 +81,23 @@ export default async function Home({ searchParams }: Props) {
     return true;
   });
 
-  const heading = tag
+  const filterLabel = tag
     ? `#${tag}`
     : month
       ? month.replace("-", "/")
-      : "PTCG Thought Log";
+      : "";
   const latestPost = posts[0];
+  const totalPages = Math.max(
+    1,
+    Math.ceil(filteredPosts.length / POSTS_PER_PAGE),
+  );
+  const currentPage = Math.min(parsePage(page), totalPages);
+  const pageStart = (currentPage - 1) * POSTS_PER_PAGE;
+  const paginatedPosts = filteredPosts.slice(
+    pageStart,
+    pageStart + POSTS_PER_PAGE,
+  );
+  const paginationItems = createPaginationItems(currentPage, totalPages);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
@@ -35,7 +106,7 @@ export default async function Home({ searchParams }: Props) {
           LUKA PTCG NOTES
         </p>
         <h1 className="mt-3 text-4xl font-semibold tracking-tight text-zinc-950 sm:text-5xl">
-          {heading}
+          PTCG Thought Log
         </h1>
         <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-600">
           Discord上のポケカ考察、手書きメモ、検証したい仮説をまとめた思考アーカイブ。
@@ -65,13 +136,15 @@ export default async function Home({ searchParams }: Props) {
 
       <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_16rem]">
         <div className="min-w-0 space-y-6">
-          <PostSearch posts={posts} />
+          <div id="search">
+            <PostSearch posts={posts} />
+          </div>
 
           {(tag || month) ? (
             <div className="flex flex-wrap items-center gap-3 border-b border-zinc-200 pb-4 text-sm">
-              <span className="text-zinc-500">Filter</span>
+              <span className="text-zinc-500">現在の絞り込み</span>
               <span className="rounded-full bg-zinc-950 px-3 py-1 text-xs font-medium text-white">
-                {heading}
+                {filterLabel}
               </span>
               <Link
                 href="/"
@@ -82,9 +155,25 @@ export default async function Home({ searchParams }: Props) {
             </div>
           ) : null}
 
-          <section className="grid gap-4">
+          <section id="latest" className="grid gap-4 scroll-mt-24">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <h2 className="text-base font-semibold text-zinc-950">
+                  {filterLabel ? "Filtered posts" : "Latest posts"}
+                </h2>
+                <p className="mt-1 text-sm text-zinc-500">
+                  {filteredPosts.length === 0
+                    ? "条件に合う記事はありません。"
+                    : `${filteredPosts.length}件中 ${pageStart + 1}-${Math.min(
+                        pageStart + paginatedPosts.length,
+                        filteredPosts.length,
+                      )}件を表示`}
+                </p>
+              </div>
+            </div>
+
             {filteredPosts.length > 0 ? (
-              filteredPosts.map((post) => (
+              paginatedPosts.map((post) => (
                 <PostCard key={post.slug} post={post} />
               ))
             ) : (
@@ -93,9 +182,81 @@ export default async function Home({ searchParams }: Props) {
               </div>
             )}
           </section>
+
+          {totalPages > 1 ? (
+            <nav
+              className="flex flex-wrap items-center justify-between gap-3 border-t border-zinc-200 pt-5 text-sm"
+              aria-label="Pagination"
+            >
+              <Link
+                href={createPageHref({
+                  tag,
+                  month,
+                  page: Math.max(1, currentPage - 1),
+                })}
+                aria-disabled={currentPage === 1}
+                className={
+                  currentPage === 1
+                    ? "pointer-events-none rounded-md border border-zinc-200 px-3 py-2 text-zinc-300"
+                    : "rounded-md border border-zinc-200 px-3 py-2 text-zinc-700 transition hover:border-zinc-300 hover:bg-white hover:text-zinc-950"
+                }
+              >
+                前へ
+              </Link>
+
+              <div className="flex flex-wrap items-center gap-1">
+                {paginationItems.map((item) => {
+                  if (typeof item !== "number") {
+                    return (
+                      <span
+                        key={item}
+                        className="px-2 py-2 text-zinc-400"
+                        aria-hidden="true"
+                      >
+                        ...
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={item}
+                      href={createPageHref({ tag, month, page: item })}
+                      aria-current={item === currentPage ? "page" : undefined}
+                      className={
+                        item === currentPage
+                          ? "rounded-md bg-zinc-950 px-3 py-2 font-medium text-white"
+                          : "rounded-md px-3 py-2 text-zinc-600 transition hover:bg-white hover:text-zinc-950"
+                      }
+                    >
+                      {item}
+                    </Link>
+                  );
+                })}
+              </div>
+
+              <Link
+                href={createPageHref({
+                  tag,
+                  month,
+                  page: Math.min(totalPages, currentPage + 1),
+                })}
+                aria-disabled={currentPage === totalPages}
+                className={
+                  currentPage === totalPages
+                    ? "pointer-events-none rounded-md border border-zinc-200 px-3 py-2 text-zinc-300"
+                    : "rounded-md border border-zinc-200 px-3 py-2 text-zinc-700 transition hover:border-zinc-300 hover:bg-white hover:text-zinc-950"
+                }
+              >
+                次へ
+              </Link>
+            </nav>
+          ) : null}
         </div>
 
-        <ArchiveSidebar posts={posts} />
+        <div id="discover" className="scroll-mt-24">
+          <ArchiveSidebar posts={posts} />
+        </div>
       </div>
     </main>
   );

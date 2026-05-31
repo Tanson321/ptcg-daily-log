@@ -61,7 +61,7 @@ export default async function PostPage({ params }: Props) {
     <main className="mx-auto w-full max-w-3xl px-5 py-8 sm:px-8">
       <Link
         href="/"
-        className="text-sm font-medium text-cyan-700 hover:text-cyan-900"
+        className="text-sm font-medium text-zinc-500 transition hover:text-zinc-950"
       >
         一覧へ戻る
       </Link>
