@@ -26,11 +26,6 @@ on:
         required: false
         type: string
 
-  schedule:
-    # 毎日 23:50 JST = 14:50 UTC
-    # 日曜は同じ実行で日次と週次の両方を下書き化する
-    - cron: "50 14 * * *"
-
 jobs:
   generate:
     runs-on: ubuntu-latest
